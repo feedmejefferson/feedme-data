@@ -1,0 +1,94 @@
+---
+title: "Access Log Analysis"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+This notebook demonstrates how we can run some simple analytics on the access log data that we collect from the feedme jefferson site and generate automatic reports that help us understand and visualize the significance of the data we've collected. 
+
+## Importing and Normalizing the access log
+
+Before we can do anything with the data, we need to import the raw access logs and convert them into a format more usable in R:
+
+```{r message=FALSE}
+library(readr)
+access_log <- read_delim("~/sandbox/jfm/feedme-data/access_log",
+                         " ", escape_double = FALSE, col_names = FALSE,
+                         trim_ws = TRUE)
+
+colnames(access_log) <- c('host','ident','authuser','date','time',
+                          'request','status','bytes','referrer',
+                          'useragent')
+
+## only include requests to hunger.json
+access_log <- access_log[grep("hunger.json",access_log$request),]
+
+## extract query string params
+m <- regexec("^.*searchSession\\=([^& ]*)&chosen\\=([^& ]*)&notChosen\\=([^& ]*).*$", access_log$request)
+query.params <- regmatches(access_log$request, m)
+image.names <- sprintf("%07d.jpg", 1:200)
+
+access_log$search.session <- sapply(query.params, function(l) l[2])
+access_log$chosen <- factor(sapply(query.params, function(l) l[3]), image.names)
+access_log$not.chosen <- factor(sapply(query.params, function(l) l[4]), image.names)
+```
+
+## Pivoting the Data
+
+Right now, the bulk of the data that we're interested in sits in the query string parameters. In order to see which images of food are getting clicked on and which ones aren't getting clicked on (as a basic measurement of popularity), we'll transform the input dataframe into a new dataframe with one entry for every image chosen and another for every image not chosen. For now we'll assign weights of 1 and -1. 
+
+
+```{r}
+library(reshape2)
+melted <- melt(access_log, 
+               id.vars=c("search.session"),
+               measure.vars=c("chosen", "not.chosen"))
+
+## assign chosen and not chosen positive and negative weightings
+map <- c(-1,1)
+names(map) <- c("not.chosen","chosen")
+melted$weight <- map[as.character(melted$variable)]
+```
+
+Next we'll reshape that into a wide dataframe with one column for each image, summing up all of the weights for each image and separately counting the number of times each image was seen. Due to the random selection of images, in our small dataset, some images will arbitrarily have been seen more than others (and some will never have been seen). 
+
+I'm sure that there's a better statistical/probability based calculation for scoring popularity of images, but for now I'm simply going to divide the sum of the clicks minus not clicks and divide that by one plus the number of times that the image was seen. Adding one will give higher weighted scores to images that were clicked seven out of seven times than only once out of one time. 
+
+```{r}
+counts <- dcast(melted, "all" ~ value, fun.aggregate = length, value.var="weight")
+ratings <- dcast(melted, "all" ~ value, fun.aggregate = sum, value.var="weight")
+weighted.ratings <- ratings[,-1] / (counts[,-1] + 1)
+```
+
+## Basic Popularity Rankings
+
+Finally, we can order the images by their weighted ranking and pick the top and bottom 10 chosen foods to see if they make sense. Since we sourced the images from random pictures of food on the internet (specifically free stock photos with a creative commons zero license provided by pexels.com), many of them aren't really appropriate for our purposes. 
+
+We would likely expect to find that the images that are the least popular are also the best candidates for removing from our pool of images. 
+
+```{r}
+ordered.ratings <- weighted.ratings[order(weighted.ratings[1,])]
+top10 <- tail(names(ordered.ratings),10)
+bottom10 <- head(names(ordered.ratings),10)
+```
+
+### Popular Foods
+
+```{r}
+library(knitr)
+## Note, this assumes that the images are sitting in a folder of the parent 
+## directory named images
+top10.images=paste("../images/",top10,sep = "")
+include_graphics(top10.images)
+```
+
+### Unpopular Foods
+
+
+```{r}
+bottom10.images=paste("../images/",bottom10,sep = "")
+include_graphics(bottom10.images)
+```
+
+

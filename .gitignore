@@ -1,2 +1,5 @@
 .Rproj.user/
 feedme-data.Rproj
+.Rproj.user
+.Rhistory
+*.nb.html
