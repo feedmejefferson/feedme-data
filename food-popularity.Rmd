@@ -27,11 +27,10 @@ access_log <- access_log[grep("hunger.json",access_log$request),]
 ## extract query string params
 m <- regexec("^.*searchSession\\=([^& ]*)&chosen\\=([^& ]*)&notChosen\\=([^& ]*).*$", access_log$request)
 query.params <- regmatches(access_log$request, m)
-image.names <- sprintf("%07d.jpg", 1:200)
 
 access_log$search.session <- sapply(query.params, function(l) l[2])
-access_log$chosen <- factor(sapply(query.params, function(l) l[3]), image.names)
-access_log$not.chosen <- factor(sapply(query.params, function(l) l[4]), image.names)
+access_log$chosen <- factor(sapply(query.params, function(l) l[3]))
+access_log$not.chosen <- factor(sapply(query.params, function(l) l[4]))
 ```
 
 ## Pivoting the Data
