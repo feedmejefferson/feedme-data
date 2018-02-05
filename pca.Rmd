@@ -11,7 +11,7 @@ Principal Component Analysis is a form of [Dimensionality Reduction](https://en.
 
 Before we can run PCA on an adjacency matrix, we first have to build it. We start with the same process we used to calculate simple popularity -- extract the data from the access log and load it into a dataframe.
 
-```{r}
+```{r, message=FALSE}
 source("prep-data.R")
 ```
 
@@ -47,6 +47,7 @@ rownames(ratings.matrix) <- ratings[,1]
 Similar to last time, we'll give each food a weighted rating for each food based on the number of times that food was chosen or not chosen during the search session as a function of the number of times it was available to be chosen.
 
 ```{r}
+#weighted.matrix <- ratings.matrix
 weighted.matrix <- ratings.matrix / (counts.matrix + 1)
 ```
 
@@ -75,7 +76,7 @@ The `v` component of our SVD output is the right decompsed matrix from our singu
 
 > Note, in this case, top and bottom might be better referred to as right and left since the positive and negative values on these dimensions convey no specific meaning in terms of "betterness". The top ten foods are simply the most DIFFERENT from the bottom ten on this abstract characteristic dimension.
 
-### Dimension 1 (popularity?)
+### Dimension 1 
 
 ```{r}
 rownames(dvu$v) <- colnames(weighted.matrix)

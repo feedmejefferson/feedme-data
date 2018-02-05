@@ -1,36 +1,15 @@
 ---
-title: "Access Log Analysis"
+title: "Ranking Food Popularity"
 output: html_notebook
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+## Access Logs
 
-This notebook demonstrates how we can run some simple analytics on the access log data that we collect from the feedme jefferson site and generate automatic reports that help us understand and visualize the significance of the data we've collected. 
+Before we can do anything with the data, we need to import the raw access logs and convert them into a format more usable in R. We've already created a reuseable script for this, so we'll just source it to build our initial `access_log` dataframe.
 
-## Importing and Normalizing the access log
-
-Before we can do anything with the data, we need to import the raw access logs and convert them into a format more usable in R:
-
-```{r message=FALSE}
-library(readr)
-access_log <- read_delim("~/sandbox/jfm/feedme-data/access_log",
-                         " ", escape_double = FALSE, col_names = FALSE,
-                         trim_ws = TRUE)
-
-colnames(access_log) <- c('host','ident','authuser','date','time',
-                          'request','status','bytes','referrer',
-                          'useragent')
-
-## only include requests to hunger.json
-access_log <- access_log[grep("hunger.json",access_log$request),]
-
-## extract query string params
-m <- regexec("^.*searchSession\\=([^& ]*)&chosen\\=([^& ]*)&notChosen\\=([^& ]*).*$", access_log$request)
-query.params <- regmatches(access_log$request, m)
-
-access_log$search.session <- sapply(query.params, function(l) l[2])
-access_log$chosen <- factor(sapply(query.params, function(l) l[3]))
-access_log$not.chosen <- factor(sapply(query.params, function(l) l[4]))
+```{r, message=FALSE}
+source("prep-data.R")
+summary(access_log)
 ```
 
 ## Pivoting the Data
@@ -90,4 +69,35 @@ bottom10.images=paste("../images/",bottom10,sep = "")
 include_graphics(bottom10.images)
 ```
 
+## Randomness
 
+For now we've just been showing two random options in response to every hunger request. The hunger app doesn't keep track of what it's shown, so it makes no effort, nor has any ability to prevent repeat images within the same session. Sometimes when clicking through images, it seems like some foods come up more frequently. Is this just our mind playing tricks on us, showing us patterns in the randomness? Or is the randomness that we rely on less than random? If the distribution truly is randomly uniform, then we would expect any particular sample to be less than perfectly uniform, but over time we would expect larger sample sizes to be very uniform. How are we doing?
+
+
+```{r}
+library(dplyr)
+data <- select(melted, value, variable) %>%
+  rename(., image.name = value, selection = variable) %>%
+  group_by(image.name, selection)  %>% 
+  summarise(hits=n())
+data.wide <- dcast(data, image.name ~ selection)
+data.wide$shown <- data.wide$chosen + data.wide$not.chosen
+hist(data.wide$shown, breaks=20)
+```
+If this sample was truly coming from a uniform distribution, then we would expect the histogram of the samples to look something like a normal bell curve -- where the curve gets tighter and tighter around the center as the population size of the sample increases. Our histogram looks something like that, but it's a bit skewed to the left. This is probably because we removed a number of images from the site that are still showing up in the data. The counts for those images won't increase anymore, so effectively we're seeing two bell curves stacked on top of each other. One for the sample of a images selected uniformly randomly from the original set of images, and then a second sample of images selected uniformly randomly from the later pruned set of images. 
+
+We can remove those images from our data though:
+
+```{r}
+removed.images <- c("0000007.jpg","0000011.jpg","0000057.jpg","0000086.jpg","0000099.jpg","0000132.jpg","0000133.jpg","0000145.jpg","0000206.jpg","0000230.jpg","0000236.jpg","0000239.jpg","0000240.jpg","0000242.jpg","0000245.jpg","0000258.jpg","0000283.jpg","0000286.jpg","0000289.jpg","0000315.jpg","0000318.jpg","0000363.jpg","0000364.jpg","0000374.jpg")
+data.wide <- filter(data.wide, !image.name %in% removed.images)
+hist(data.wide$shown, breaks=20)
+```
+
+This doesn't really seem to make the skew any better though...
+
+Finally, if we just want to see how often images were chosen or not chosen ordered by how frequently they were shown, here's a simple visual:
+
+```{r, fig.width=10,fig.height=30}
+ggplot(data.wide, aes(reorder(image.name,shown))) + geom_col(aes(y=shown,fill="shown")) + geom_col(aes(y=chosen,fill="chosen")) + coord_flip()
+```
