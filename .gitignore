@@ -6,3 +6,5 @@ feedme-data.Rproj
 .RData
 *.gz
 raw/
+transformed/
+

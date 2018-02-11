@@ -86,18 +86,11 @@ hist(data.wide$shown, breaks=20)
 ```
 If this sample was truly coming from a uniform distribution, then we would expect the histogram of the samples to look something like a normal bell curve -- where the curve gets tighter and tighter around the center as the population size of the sample increases. Our histogram looks something like that, but it's a bit skewed to the left. This is probably because we removed a number of images from the site that are still showing up in the data. The counts for those images won't increase anymore, so effectively we're seeing two bell curves stacked on top of each other. One for the sample of a images selected uniformly randomly from the original set of images, and then a second sample of images selected uniformly randomly from the later pruned set of images. 
 
-We can remove those images from our data though:
-
-```{r}
-removed.images <- c("0000007.jpg","0000011.jpg","0000057.jpg","0000086.jpg","0000099.jpg","0000132.jpg","0000133.jpg","0000145.jpg","0000206.jpg","0000230.jpg","0000236.jpg","0000239.jpg","0000240.jpg","0000242.jpg","0000245.jpg","0000258.jpg","0000283.jpg","0000286.jpg","0000289.jpg","0000315.jpg","0000318.jpg","0000363.jpg","0000364.jpg","0000374.jpg")
-data.wide <- filter(data.wide, !image.name %in% removed.images)
-hist(data.wide$shown, breaks=20)
-```
-
-This doesn't really seem to make the skew any better though...
+> Actually, that last comment is already outdated. Now that we've doubled the number available images, the new images are showing up as a new distribution on the low end. 
 
 Finally, if we just want to see how often images were chosen or not chosen ordered by how frequently they were shown, here's a simple visual:
 
 ```{r, fig.width=10,fig.height=30}
+library(ggplot2)
 ggplot(data.wide, aes(reorder(image.name,shown))) + geom_col(aes(y=shown,fill="shown")) + geom_col(aes(y=chosen,fill="chosen")) + coord_flip()
 ```
