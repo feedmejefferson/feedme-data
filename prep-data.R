@@ -1,5 +1,5 @@
 library(readr)
-files <- list.files(".", "access_log.*")
+files <- list.files("raw", "access_log.*", full.names = TRUE)
 access_log <- NULL
 for (f in files) {
   n <-read_delim(f,
