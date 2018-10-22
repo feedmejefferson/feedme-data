@@ -11,7 +11,7 @@ Principal Component Analysis is a form of [Dimensionality Reduction](https://en.
 
 Before we can run PCA on an adjacency matrix, we first have to build it. We start with the same process we used to calculate simple popularity -- extract the data from the access log and load it into a dataframe.
 
-```{r, message=FALSE}
+```{r, message=FALSE, echo=FALSE}
 source("prep-data.R")
 ```
 
@@ -72,7 +72,7 @@ We can see from the coefficents, that the second dimension is nearly as signific
 
 ## Visualizing the Results
 
-The `v` component of our SVD output is the right decompsed matrix from our singular value decomposition. The each column of this matrix will rank all of our foods on a different dimension -- the first column being the most significant of those dimensions. We can visualize each of these dimensions in the same way that we visualized popularith -- by displaying the top and bottom ten foods for each dimension.
+The `v` component of our SVD output is the right decompsed matrix from our singular value decomposition. Each column of this matrix will rank all of our foods on a different dimension -- the first column being the most significant of those dimensions. We can visualize each of these dimensions in the same way that we visualized popularity -- by displaying the top and bottom ten foods for each dimension.
 
 > Note, in this case, top and bottom might be better referred to as right and left since the positive and negative values on these dimensions convey no specific meaning in terms of "betterness". The top ten foods are simply the most DIFFERENT from the bottom ten on this abstract characteristic dimension.
 
