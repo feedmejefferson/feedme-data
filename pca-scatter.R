@@ -7,9 +7,20 @@ data <- select(access_log, search.session, datetime, chosen, not.chosen) %>% arr
 clicks <- select(data, image = chosen)  %>% group_by(., image) %>% summarize(C=n())
 not.clicks <- select(data, image = not.chosen) %>% group_by(., image) %>% summarize(U=n())
 views <- full_join(clicks, not.clicks)
+# replace missing values from full outer join with 0
+views[is.na(views)] <- 0
 views$S <- views$C + views$U
+views$CTR <- views$C/views$S
+live.images <- read.table("foodlist.txt")
+colnames(live.images) <- c("image")
+views <- left_join(live.images, views)
+## ideally we'd only like to present comparisons for foods with similar popularity
+## we'll use click through rate as a general measure of popularity and stratify foods
+## by their CTR percentile into q discrete quantiles
+q <- 10
+views$Q <- cut(views$CTR, breaks=quantile(views$CTR, probs=((0:q)/q)), labels=1:q, include.lowest = TRUE)
 
-bucket.size <- 60 ## sixty second/one minute buckets
+bucket.size <- 120 ## two minute buckets
 data$subsession <- paste(data$search.session, as.integer(as.integer(data$datetime)/bucket.size), sep=":")
 
 
