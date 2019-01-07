@@ -8,3 +8,7 @@ feedme-data.Rproj
 raw/
 transformed/
 
+raw
+archive
+gcp/**/*.json
+aggregated_logs
