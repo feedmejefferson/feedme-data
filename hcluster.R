@@ -16,8 +16,8 @@ points = points[,colnames(points)!="food"]
 # normalize the points to all be unit vectors
 points = points/(rowSums(points^2)^.5)
 # uncomment the following row to look at a smaller sample
-samp = sample(1:nrow(points),64)
-points = points[samp,]
+#samp = sample(1:nrow(points),64)
+#points = points[samp,]
 ## binary works well enough without normalization and combined with either ward clustering method
 ## euclidian works well as well, but needs to be normalized, in general, ward
 ## clustering seems to offer the most balanced trees
@@ -28,7 +28,7 @@ m=as.matrix(dists)
 
 
 source("./convert-to-d3-dendrogram.R")
-JSON <- HCtoJSON4(clusters)
+JSON <- HCtoJSON5(clusters)
 write(JSON, "d3/clusters.json")
 #points.matrix <- as.matrix(points)
 #D3Dendo(JSON, file_out="d3/dendo.html")

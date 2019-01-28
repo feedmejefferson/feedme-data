@@ -62,7 +62,7 @@ d3.json("clusters.json", function(error, root) {
   node.append("circle")
       .attr("r", 2)
         .on("mouseover", function(d) {
-            img.attr("src", "images/" + d.name);
+            img.attr("src", "images/" + d.names[1]);
 //              img.attr("src", "http://www.feedmejefferson.com/images/thumbs/" + d.name);
             });
 
