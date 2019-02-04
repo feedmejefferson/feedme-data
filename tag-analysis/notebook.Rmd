@@ -1,0 +1,156 @@
+---
+title: "Tag Analysis using Word2Vec Word Embeddings"
+output: html_notebook
+---
+
+This is just a quick R Notebook to keep track of some basic analysis of our current Feed Me Jefferson food tags. 
+
+## Background
+
+At the moment we are running live with about one thousand food images. We have two apps/models that both show users two foods at a time:
+
+1. **food fight** shows random food items with the intent of grabbing user food preferences for collaborative filtering 
+2. **crystal bowl** attempts to take users through a binary search/gradient descent that leads them to the food they're currently hungry for
+
+**Crystal Bowl** currently takes users through a hierarchically clustered food space that uses food similarities based on tags that have been applied to those foods. The tags were scraped along with the food images from our originating food sources. So far we have two sources of food images:
+
+1. **pexels.com** -- a list of about 2500 food images from which we have curated about 800 food images
+2. **flickr.com** -- a list of 116 food images hand selected to fill in some of the gaps from our original list of pexels images
+
+We quickly noticed that the pexels tags (while not always 100% relevant to our purposes) were much more consistent and useable than the flickr ones. 
+
+## Prerequisites for Running this Notebook
+
+This notebook relies on the tag data and the list of live food items available in the [Feed Me Jefferson github images repository](git@github.com:feedmejefferson/feedme-data.git). Clone that repository and create a symlink to it in this directory. 
+
+The `images/menu.json` file includes the list of currently live food images. The `images/tags` directory contains one comma separated tag file per image where the tag file name is the same as the image name with the addition of `.txt` added to the end (e.g. `images/tags/0000002.jpg.txt`)
+
+## Load the tags
+
+The tags are sitting in comma separated files. Some tags are multiword, so we don't want to use a standard word tokenizer -- instead we want to create our own custom tokenizer that simply splits on commas and new lines and normalizes all tags to lowercase for consistency.
+
+```{r}
+tag_tokenizer <- function(comma_separated_tags) { 
+  strsplit(tolower(comma_separated_tags),"[,\n]") 
+}
+```
+
+Now we can use that tokenizer in a basic chain of functions to parse each of the tag files corresponding to each of our live images.
+
+```{r}
+library(tidyverse)
+library(tidytext)
+library(scales)
+library(jsonlite)
+
+menu <- read_json('./images/menu.json', simplifyVector = TRUE)
+
+food_tags <- menu %>% 
+  map_df(~ data_frame(
+    text = read_file(paste0("./images/tags/", .x ,".txt")),
+    food = .x
+  )) %>% 
+  unnest_tokens(tag, text, token=tag_tokenizer)
+
+head(food_tags)
+```
+
+## Basic Stats
+
+Now that we have our food to tag relatioships stored in a skinny style tidy format we can look at some of the basic relationships. For instance, how many distinct tags do we have in our data?
+
+```{r}
+length(unique(food_tags$tag))
+```
+
+What are the top 20 most common tags?
+
+```{r}
+food_tags %>% 
+  count(tag, sort=TRUE) %>% 
+  filter(n>50) %>% 
+  mutate(tag=reorder(tag,n)) %>% 
+  top_n(20) %>%
+  ggplot(aes(tag, n)) + 
+  geom_col() + 
+  coord_flip()
+```
+
+## Food Image Tag count distributions
+
+Histograms are a nice way to get a feel for the distribution of counts. For instance, how many tags are each of our food items typically tagged with?
+
+```{r}
+## how many tags does each food have
+food_tag_counts <- food_tags %>% 
+  count(food) 
+food_tag_counts %>%
+  ggplot +
+  aes(x=n) +
+  xlab("Tag count") + 
+  ylab("Number of Foods") +
+  geom_histogram(binwidth=2) 
+```
+
+So in this case, we can see there are very few images that have more than 40 tags, a few more that have tag counts in the 30s and tag counts becoming increasingly more common down to about eight or so at which point the frequency starts to drop again. 
+
+In other words, we could say that the _typical_ image has eight tags, but most our distribution is quite spread out, so the vast majority of images are far from typical. 
+
+## Tag Occurrences
+
+Similarly, we might like to see a distribution of tag occurence -- meaning how often do each of our tags typically occur (or how many foods are tagged with each tag)?
+
+```{r}
+## how many times does each tag show up across all foods
+tag_occurences <- food_tags %>% 
+  count(tag) 
+
+## plot histogram of tag occurrences
+tag_occurences %>%
+  ggplot +
+  aes(x=n) +
+  xlab("Tag Occurrence") + 
+  ylab("Number of Tags") +
+  geom_histogram() 
+```
+
+As we can see from the histogram, the tag occurrences follow a very skewed distribution. We already saw from our first plot up above that the most common tag _food_ occurs in over 800 images (not surprising considering all of our images should be of food).
+
+With `r length(unique(food_tags$tag))` distinct tags, it's not surprising that their distribution follow [Zipf's Law](https://en.wikipedia.org/wiki/Zipf%27s_law) which essentially a loglog distribution. We can see this when we plot the histogram on a single y axis log scale and it still curves of into the x axis.
+
+```{r}
+## plot it on a log scale for the y axis
+tag_occurences %>%
+  ggplot +
+  aes(x=n) +
+  xlab("Tag Occurrence") + 
+  ylab("Number of Tags") +
+  geom_histogram() +
+  scale_y_continuous(trans=log10_trans()) 
+```
+
+Double log scaled plots are a little trickier with histograms, but can be achieved with bin sizes of exponentially increasing size.
+
+```{r}
+## plot it on a log scale for both axes using log scaled bins
+tag_occurences %>%
+  ggplot +
+  aes(x=n) +
+  xlab("Tag Occurrence") + 
+  ylab("Number of Tags") +
+  geom_histogram(breaks=2^(0:11)-.001) +
+  scale_y_continuous(trans=log10_trans()) +
+  scale_x_continuous(trans=log2_trans())
+```
+
+Here we finally see the frequency drop off look more linear (on a log log scale).
+
+## Linguistic Redundancy
+
+Part of the problem with natural language tags (unrestricted free tagging) is that there are so many ways to say the same thing. Two of our most common tags, _delicious_ and _tasty_, have nearly the same meaning. If we try to measure food similarity based on raw tags, we won't be able to distinguish the difference between two foods tagged with similar meaning but different words, and two foods tagged with completely different meaning words. A food tagged _tasty_ will look just as dissimilar from a food tagged _delicious_ as one tagged _disgusting_. 
+
+Fortunately we can use word embeddings to map tags to meanings. 
+
+
+
+
