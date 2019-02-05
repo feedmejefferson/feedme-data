@@ -1,5 +1,5 @@
 var radius = 400;
-var transitionDuration = 1000;
+var transitionDuration = 0;
 
 var cluster = d3.layout.cluster()
     .size([360, radius - 120]);
@@ -37,13 +37,25 @@ function updateRoot(root) {
 
   var node = svg.selectAll("g.node").data(nodes);
   
+  // remove extra elements leftover from before and no longer needed
   node.exit().remove();
-  node.enter().append("g")
-      .attr("class", "node")
-      .attr("transform", 
-        function(d) { return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")"; })
+
+  // add new elements if needed
+  var enteredNodes = node.enter().append("g")
+      .attr("class", "node");
+  enteredNodes
       .append("circle")
       .attr("r", 4);
+  enteredNodes.append("text")
+      .attr("dy", ".5em")
+      .attr("font-size", "1rem");
+  
+  // update all existing ones with details from new data bound to them
+  node.select("text")
+      .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
+      .attr("transform", function(d) { return d.x < 180 ? "translate(8)" : "rotate(180)translate(-8)"; })
+      .text(function(d) { return d.names[1] });
+
 
   node.transition().duration(transitionDuration)
     .attr("transform",
@@ -54,11 +66,6 @@ function updateRoot(root) {
     .on("mouseover", function(d) {
       img.attr("src", "../images/" + d.names[1]);});
 
-//  node.append("text")
-//      .attr("dy", ".31em")
-//      .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
-//      .attr("transform", function(d) { return d.x < 180 ? "translate(8)" : "rotate(180)translate(-8)"; })
-//      .text(function(d) { return d.name; });
 }
 
 d3.select(self.frameElement).style("height", radius * 2 + "px");
