@@ -18,7 +18,7 @@ var img = d3.select("#image-container")
     .attr("height","300px")
     .attr("src","");
 
-d3.json("clusters.json", function(error, root) {
+d3.json("food-clusters.json", function(error, root) {
   if (error) throw error;
   updateRoot(root);
 });
@@ -46,25 +46,17 @@ function updateRoot(root) {
   enteredNodes
       .append("circle")
       .attr("r", 4);
-  enteredNodes.append("text")
-      .attr("dy", ".5em")
-      .attr("font-size", "1rem");
   
   // update all existing ones with details from new data bound to them
-  node.select("text")
-      .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
-      .attr("transform", function(d) { return d.x < 180 ? "translate(8)" : "rotate(180)translate(-8)"; })
-      .text(function(d) { return d.names[1] });
-
-
   node.transition().duration(transitionDuration)
     .attr("transform",
       function(d) { return "rotate(" + (d.x -90) + ")translate(" + d.y + ")"; });
 
   node
-    .on("click", updateRoot)
+    .on("click", function(d) {if(d==root){updateRoot(root.parent)}else{updateRoot(d)}})
     .on("mouseover", function(d) {
       img.attr("src", "../images/" + d.names[1]);});
+  //    img.attr("src", "http://feedmejefferson.com/images/thumbs/" + d.names[1]);});
 
 }
 

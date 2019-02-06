@@ -77,9 +77,14 @@ food_tag_counts %>%
   
 
 
-dictionary = read_delim("filtered4.txt"," ", col_names = FALSE)
+dictionary = read_delim("glove/filtered-dictionary.txt"," ", col_names = FALSE)
 labels <- dictionary$X1
 dictionary <- dictionary[,-1]
 rownames(dictionary) <- labels
 d <- dist(dictionary)
 clusters <- hclust(d)
+
+source("./json-dendogram.R")
+JSON <- toJsonNodeTree(clusters)
+write(JSON, "d3/word-tree.json")
+

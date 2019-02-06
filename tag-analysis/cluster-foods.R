@@ -58,8 +58,10 @@ clusters = hclust(dists, "ward.D2")
 
 
 source("./json-dendogram.R")
+## write out the food clusters file for the d3.js food explorer
 JSON <- toLabeledJsonNodeTree(clusters)
-write(JSON, "d3/clusters.json")
+write(JSON, "d3/food-clusters.json")
+## write out the simplified food tree for crystal bowl
 JSON <- toJsonNodeTree(clusters)
 write(JSON, "d3/tree.json")
 #points.matrix <- as.matrix(points)

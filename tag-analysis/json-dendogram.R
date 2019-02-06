@@ -66,3 +66,27 @@ toJsonNodeTree<-function(hc){
   return(toJSON(nodes[[nrow(merge)]]))
 }
 
+toJsonWeightedTree<-function(hc,values){
+  
+  labels<-hc$labels
+  merge<-data.frame(hc$merge)
+  nodes<-vector("list",nrow(merge))
+  
+  for (i in (1:nrow(merge))) {
+    children <- vector("list",2)
+    for(j in (1:2)) {
+      if(merge[i,j]<0) {
+        index <- -merge[i,j]
+        value=values$labels[index]
+        size=values$counts[index]
+        children[[j]] <- list(value=value,size=size)
+      } else {
+        children[[j]] <- nodes[[merge[i,j]]]
+      }
+    }
+    nodes[[i]] <- list(names=c(children[[1]][["names"]][1],children[[1]][["names"]][4],children[[2]][["names"]][1],children[[2]][["names"]][4]),children=children)
+    nodes[[i]] <- list(size=children[[1]][["size"]]+children[[2]][["size"]],children=children)
+  }
+  return(toJSON(nodes[[nrow(merge)]]))
+}
+
