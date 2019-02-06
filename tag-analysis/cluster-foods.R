@@ -32,7 +32,7 @@ points <- within(points, rm("image_name"))
 #points <- t(points)
 # remove tags that only show up once
 cutoff <- 1
-points <- points[,colSums(points[-1,])>cutoff]
+points <- points[,colSums(points[,])>cutoff]
 
 # use tf/idf like weighting -- give common tags less signficance
 idf <- log(nrow(points)/colSums(points))
