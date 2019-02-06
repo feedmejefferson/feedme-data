@@ -55,8 +55,24 @@ function updateRoot(root) {
   node
     .on("click", function(d) {if(d==root){updateRoot(root.parent)}else{updateRoot(d)}})
     .on("mouseover", function(d) {
-      //img.attr("src", "../images/" + d.names[1]);});
-      img.attr("src", "http://feedmejefferson.com/images/thumbs/" + d.names[1]);});
+      //img.attr("src", "../images/" + d.names[1]);
+      img.attr("src", "http://www.feedmejefferson.com/images/thumbs/" + d.names[1]);
+      $.ajax({
+        dataType: "text",
+        url: "http://www.feedmejefferson.com/images/attributions/" + d.names[1] + ".txt",
+        success: function(data) {
+          $("#image-attributions").html(data);
+        }
+      });
+      $.ajax({
+        dataType: "text",
+        url: "http://www.feedmejefferson.com/images/tags/" + d.names[1] + ".txt",
+        success: function(data) {
+          $("#image-tags").html(data.replace(/,/g, ", "));
+        }
+      });
+
+    });
 
 }
 
