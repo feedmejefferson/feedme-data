@@ -36,10 +36,19 @@ dictionary <-
 
 ## remove tags that aren't in our dictionary from the food tagspace
 food_tags <- food_tags %>% semi_join(dictionary)
+#food_tags$value <- 0
+
+source("./load-ingredients.R")
+ingredient_tags <- ingredients %>% semi_join(dictionary, by=c("ingredient"="tag"))
+ingredient_tags$n=1  ## try an arbitrary upweighting for ingredients
 
 food_tagspace <- food_tags %>% 
   rename(food_=food) %>%
   mutate(value=1) %>%
+  left_join(ingredient_tags, by=c("tag"="ingredient")) %>%
+  mutate(n=replace_na(n,0)) %>%
+  mutate(value=value+n) %>%
+  select(food_, tag, value) %>%
   spread(tag, value, fill=0)
 
 # convert our tagspace of foods to a matrix
