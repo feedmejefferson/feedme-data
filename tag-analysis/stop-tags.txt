@@ -185,12 +185,9 @@ lady
 lamp
 laptop
 lawn
-leafy
-leftovers
 light
 lights
 line
-loaves
 log
 luncheon
 luxury
@@ -202,8 +199,6 @@ male
 many
 marinated
 marine
-mason jar
-mason jars
 measurement
 medicine
 messy
@@ -225,25 +220,16 @@ hungry
 menu
 party
 pattern
-porcelain
 wet
 celebration
 heart
-ingredient
-ceramic
-cooked
 depth of field
 flora
-food presentation
 hands
 outdoors
 people
-plates
-saucer
 taste
 woman
-container
-food plating
 from above
 harvest
 person
@@ -257,61 +243,31 @@ texture
 dark
 food prep
 agriculture
-crust
 hand
-ripe
-cutlery
-dining
 high angle shot
-mug
 flowers
-knife
-mouth-watering
 tableware
-chopsticks
 decoration
 edible
 morning
 tropical
-colourful
 summer
-gourmet
-colorful
 leaves
-green
 indoors
 grow
-red
 eating
 macro
 color
 kitchen
-spoon
-fork
 food photography
 close -up
 focus
-ingredients
-glass
-indulgence
-cup
-slice
 wooden
-diet
 still life
 eat
 wood
-bowl
 blur
-yummy
 cuisine
 cooking
-dish
-table
-dinner
 close-up
-plate
-tasty
-meal
-delicious
 food

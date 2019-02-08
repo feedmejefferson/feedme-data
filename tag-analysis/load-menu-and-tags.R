@@ -19,4 +19,6 @@ food_tags <- menu %>%
     text = read_file(paste0("./images/tags/", .x ,".txt")),
     food = .x
   )) %>% 
-  unnest_tokens(tag, text, token=tag_tokenizer)
+  unnest_tokens(tag, text, token=tag_tokenizer) %>%
+  unnest_tokens(tag, tag, token="skip_ngrams", collapse=FALSE)
+
