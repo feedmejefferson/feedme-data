@@ -1,4 +1,5 @@
 source("./load-menu-and-tags.R")
+source("./load-stoplist.R")
 
 ## cannonicalize the tags -- map all hyphenated and space
 ## spearated tags to the same cannonical version -- thus
@@ -8,12 +9,13 @@ source("./load-menu-and-tags.R")
 ## remove the duplicates created here so as not to over
 ## weight them
 food_tags <- mutate(food_tags, tag=gsub("[ -]","",tag)) %>%
+  anti_join(stoplist) %>%
   distinct()
   
 
 ## how many times does each tag show up across all foods
-tag_occurences <- food_tags %>% 
-  count(tag) 
+#tag_occurences <- food_tags %>% 
+#  count(tag) 
 
 
 ## cluster the tags that show up in our dictionary
