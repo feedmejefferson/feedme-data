@@ -84,7 +84,6 @@ toJsonWeightedTree<-function(hc,values){
         children[[j]] <- nodes[[merge[i,j]]]
       }
     }
-    nodes[[i]] <- list(names=c(children[[1]][["names"]][1],children[[1]][["names"]][4],children[[2]][["names"]][1],children[[2]][["names"]][4]),children=children)
     nodes[[i]] <- list(size=children[[1]][["size"]]+children[[2]][["size"]],children=children)
   }
   return(toJSON(nodes[[nrow(merge)]]))

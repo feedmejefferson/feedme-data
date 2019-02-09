@@ -41,13 +41,13 @@ food_tags <- food_tags %>% semi_join(dictionary)
 #food_tags$value <- 0
 
 source("./load-ingredients.R")
-ingredient_tags <- ingredients %>% semi_join(dictionary, by=c("ingredient"="tag"))
-ingredient_tags$n=1  ## try an arbitrary upweighting for ingredients
+ingredients <- ingredients %>% semi_join(dictionary, by=c("ingredient"="tag"))
+ingredients$n=1  ## try an arbitrary upweighting for ingredients
 
 food_tagspace <- food_tags %>% 
   rename(food_=food) %>%
   mutate(value=1) %>%
-  left_join(ingredient_tags, by=c("tag"="ingredient")) %>%
+  left_join(ingredients, by=c("tag"="ingredient")) %>%
   mutate(n=replace_na(n,0)) %>%
   mutate(value=value+n) %>%
   select(food_, tag, value) %>%
@@ -84,5 +84,50 @@ clusters <- hclust(d)
 
 source("./json-dendogram.R")
 JSON <- toLabeledJsonNodeTree(clusters)
+write(JSON, "d3/food-clusters.json")
+
+
+## run pca on the food_meaningspace
+dvu <- svd(food_meaningspace)
+dvu$d[1:10]
+
+
+rownames(dvu$u) <- rownames(food_meaningspace)
+u <- dvu$u[,1:15]
+u.csv <- data.frame("image"=rownames(u),u)
+#v <- left_join(views, v)
+write.csv(file="d3/pca-scatter.csv",x=u.csv,row.names = FALSE)
+
+dimension = 1
+subset = data.frame(u)
+
+vsplit <- function(df, n=2) {
+  l = nrow(df)
+  r = l/n
+  return(lapply(1:n, function(i) {
+    s = max(1, round(r*(i-1))+1)
+    e = min(l, round(r*i))
+    return(df[s:e,])
+  }))
+}
+
+
+buildNode <- function(subset, dimension) {
+  l = nrow(subset)
+  name=c(rownames(subset)[ceiling(l/2)])
+  if(l<2) {
+    return(list(names=c(name,name)))
+  } else {
+    sorted = subset[order(subset[,dimension]),]
+    children=lapply(vsplit(sorted),function(x) {buildNode(x,dimension+1)})
+    return(list(names=c(name,name),children=children))
+  }
+}
+
+## starting with the second dimension as the first one
+## isn't really capturing the type of information we want
+node=buildNode(subset,2)
+
+JSON=toJSON(node)
 write(JSON, "d3/food-clusters.json")
 

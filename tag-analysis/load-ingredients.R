@@ -37,3 +37,8 @@ ingredients2 <- FOOD_DES %>%
   count(ingredient)
 
 ingredients <- ingredients %>% union(ingredients2) %>% count(ingredient)
+
+## cleanup
+rm(ingredients2)
+rm(FOOD_DES)
+rm(ingredients.csv)
