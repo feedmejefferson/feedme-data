@@ -1,4 +1,4 @@
-library(jsonlite)
+library(rjson)
 
 toLabeledJsonNodeTree<-function(hc){
   
@@ -88,4 +88,48 @@ toJsonWeightedTree<-function(hc,values){
   }
   return(toJSON(nodes[[nrow(merge)]]))
 }
+
+
+vsplit <- function(df, n=2) {
+  l = nrow(df)
+  r = l/n
+  return(lapply(1:n, function(i) {
+    s = max(1, round(r*(i-1))+1)
+    e = min(l, round(r*i))
+    return(df[s:e,])
+  }))
+}
+
+
+buildBalancedLabeledNode <- function(subset, dimension) {
+  l = nrow(subset)
+  name=c(rownames(subset)[ceiling(l/2)])
+  if(l<2) {
+    return(list(names=c(name,name)))
+  } else {
+    sorted = subset[order(subset[,dimension]),]
+    children=lapply(vsplit(sorted),function(x) {buildBalancedLabeledNode(x,dimension+1)})
+    return(list(names=c(name,name),children=children))
+  }
+}
+buildBalancedNode <- function(subset, dimension) {
+  l = nrow(subset)
+  if(l<2) {
+    return(list(value=rownames(subset)[1]))
+  } else {
+    sorted = subset[order(subset[,dimension]),]
+    children=lapply(vsplit(sorted),function(x) {buildBalancedNode(x,dimension+1)})
+    return(list(children=children))
+  }
+}
+
+pcaToBalancedTree <- function(subset) {
+  node=buildBalancedNode(subset,2)
+  return(toJSON(node))
+}
+pcaToBalancedLabeledTree <- function(subset) {
+  node=buildBalancedLabeledNode(subset,2)
+  return(toJSON(node))
+}
+
 

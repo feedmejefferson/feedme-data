@@ -77,7 +77,8 @@ food_meaningspace <- food_tagspace %*% tag_meaningspace
 ## normalize the output to unit vectors
 food_meaningspace = food_meaningspace/(rowSums(food_meaningspace^2)^.5)
 
-
+## skip hierarchical clustering for now in favor of pca based trees
+if(FALSE) {
 #rownames(tagspace) <- labels
 d <- dist(food_meaningspace)
 clusters <- hclust(d)
@@ -85,7 +86,7 @@ clusters <- hclust(d)
 source("./json-dendogram.R")
 JSON <- toLabeledJsonNodeTree(clusters)
 write(JSON, "d3/food-clusters.json")
-
+}
 
 ## run pca on the food_meaningspace
 dvu <- svd(food_meaningspace)
@@ -98,36 +99,10 @@ u.csv <- data.frame("image"=rownames(u),u)
 #v <- left_join(views, v)
 write.csv(file="d3/pca-scatter.csv",x=u.csv,row.names = FALSE)
 
-dimension = 1
-subset = data.frame(u)
+source("./json-dendogram.R")
 
-vsplit <- function(df, n=2) {
-  l = nrow(df)
-  r = l/n
-  return(lapply(1:n, function(i) {
-    s = max(1, round(r*(i-1))+1)
-    e = min(l, round(r*i))
-    return(df[s:e,])
-  }))
-}
-
-
-buildNode <- function(subset, dimension) {
-  l = nrow(subset)
-  name=c(rownames(subset)[ceiling(l/2)])
-  if(l<2) {
-    return(list(names=c(name,name)))
-  } else {
-    sorted = subset[order(subset[,dimension]),]
-    children=lapply(vsplit(sorted),function(x) {buildNode(x,dimension+1)})
-    return(list(names=c(name,name),children=children))
-  }
-}
-
-## starting with the second dimension as the first one
-## isn't really capturing the type of information we want
-node=buildNode(subset,2)
-
-JSON=toJSON(node)
+JSON=pcaToBalancedLabeledTree(data.frame(u))
 write(JSON, "d3/food-clusters.json")
+JSON=pcaToBalancedTree(data.frame(u))
+write(JSON, "d3/tree.json")
 
