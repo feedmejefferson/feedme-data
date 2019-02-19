@@ -9,7 +9,7 @@ tag_tokenizer <- function(comma_separated_tags) {
 }
 
 ## get the list of active foods currently live on the site  
-menu <- read_json('./images/menu.json', simplifyVector = TRUE)
+menu <- read_json('./images/meta/menu.json', simplifyVector = TRUE)
 ## ignore flickr images for now until we can clean up their tags
 menu <- menu[grep('000[01]....jpg',menu)]
 
