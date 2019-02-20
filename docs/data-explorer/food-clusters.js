@@ -56,17 +56,17 @@ function updateRoot(root) {
     .on("click", function(d) {if(d==root){updateRoot(root.parent)}else{updateRoot(d)}})
     .on("mouseover", function(d) {
       //img.attr("src", "../images/" + d.names[1]);
-      img.attr("src", "http://feedmejefferson.github.io/images/thumbs/" + d.names[1]);
+      img.attr("src", "https://feedmejefferson.github.io/images/thumbs/" + d.names[1]);
       $.ajax({
         dataType: "text",
-        url: "http://feedmejefferson.github.io/images/attributions/" + d.names[1] + ".txt",
+        url: "https://feedmejefferson.github.io/images/attributions/" + d.names[1] + ".txt",
         success: function(data) {
           $("#image-attributions").html(data);
         }
       });
       $.ajax({
         dataType: "text",
-        url: "http://feedmejefferson.github.io/images/tags/" + d.names[1] + ".txt",
+        url: "https://feedmejefferson.github.io/images/tags/" + d.names[1] + ".txt",
         success: function(data) {
           $("#image-tags").html(data.replace(/,/g, ", "));
         }
