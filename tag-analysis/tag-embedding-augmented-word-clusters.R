@@ -94,13 +94,15 @@ dvu$d[1:10]
 
 
 rownames(dvu$u) <- rownames(food_meaningspace)
-u <- dvu$u[,1:15]
+u <- dvu$u[,1:20]
 u.csv <- data.frame("image"=rownames(u),u)
 #v <- left_join(views, v)
 write.csv(file="d3/pca-scatter.csv",x=u.csv,row.names = FALSE)
 
 source("./json-dendogram.R")
-
+# repeat dimensions with higher significance
+dims = c(2,3,2,3,4:15)
+u=u[,dims]
 JSON=pcaToBalancedLabeledTree(data.frame(u))
 write(JSON, "d3/food-clusters.json")
 JSON=pcaToBalancedTree(data.frame(u))

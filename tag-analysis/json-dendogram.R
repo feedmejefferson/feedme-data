@@ -90,14 +90,21 @@ toJsonWeightedTree<-function(hc,values){
 }
 
 
-vsplit <- function(df, n=2) {
-  l = nrow(df)
-  r = l/n
-  return(lapply(1:n, function(i) {
-    s = max(1, round(r*(i-1))+1)
-    e = min(l, round(r*i))
-    return(df[s:e,])
-  }))
+vsplit <- function(df,dimension) {
+  if(dimension<5) {
+    i = cut(1:nrow(df), 
+          labels=c(1,2,3), 
+          breaks=quantile(1:nrow(df),probs=c(0,.4,.6,1)),
+          include.lowest = TRUE)
+    return(list(df[i==1|i==2,],df[i==2|i==3,]))
+  } else {
+    i = cut(1:nrow(df), 
+            labels=c(1,2), 
+            breaks=quantile(1:nrow(df),probs=c(0,.5,1)),
+            include.lowest = TRUE)
+    return(list(df[i==1,],df[i==2,]))
+    
+  }
 }
 
 
@@ -108,7 +115,7 @@ buildBalancedLabeledNode <- function(subset, dimension) {
     return(list(names=c(name,name)))
   } else {
     sorted = subset[order(subset[,dimension]),]
-    children=lapply(vsplit(sorted),function(x) {buildBalancedLabeledNode(x,dimension+1)})
+    children=lapply(vsplit(sorted,dimension),function(x) {buildBalancedLabeledNode(x,dimension+1)})
     return(list(names=c(name,name),children=children))
   }
 }
@@ -118,17 +125,17 @@ buildBalancedNode <- function(subset, dimension) {
     return(list(value=rownames(subset)[1]))
   } else {
     sorted = subset[order(subset[,dimension]),]
-    children=lapply(vsplit(sorted),function(x) {buildBalancedNode(x,dimension+1)})
+    children=lapply(vsplit(sorted,dimension),function(x) {buildBalancedNode(x,dimension+1)})
     return(list(children=children))
   }
 }
 
 pcaToBalancedTree <- function(subset) {
-  node=buildBalancedNode(subset,2)
+  node=buildBalancedNode(subset,1)
   return(toJSON(node))
 }
 pcaToBalancedLabeledTree <- function(subset) {
-  node=buildBalancedLabeledNode(subset,2)
+  node=buildBalancedLabeledNode(subset,1)
   return(toJSON(node))
 }
 
