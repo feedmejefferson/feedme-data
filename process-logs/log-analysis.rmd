@@ -1,0 +1,170 @@
+---
+title: "Log Analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, include=FALSE}
+library(tidyverse)
+library(jsonlite)
+library(digest)
+library(lubridate)
+v.digest=Vectorize(digest)
+
+logs = fs::dir_ls("raw",recurse = TRUE, regexp = "\\.json$") %>%
+  map_dfr(ndjson::stream_in) %>%
+  filter(severity=="INFO") %>%
+  select(insertId, timestamp, textPayload) %>%
+  mutate(month=floor_date(date(timestamp),unit='month'),
+         week=floor_date(date(timestamp),unit='week'),
+         day=floor_date(date(timestamp),unit='day')
+         )
+
+
+## there has to be a better way to do this inline. scan gives
+## us quoted parsing with a delimiter out of the box, but this
+## is definitely a bit hacky
+textPayload = scan(text=logs$textPayload, what=list(ip.address="", user.agent="", json=""))
+logs$ip.address = textPayload$ip.address
+logs$user.agent = textPayload$user.agent
+logs$json = textPayload$json
+## we need to coerce the modified df back into a homogenous type
+## for the unnest to work
+logs = as_tibble(logs)
+logs$json = map(logs$json, fromJSON)
+logs = select(logs, -c(textPayload))
+
+## This should generate a new sequential id when either
+## the insertId changes, or the step number equals 1. We
+## use "run length encoding" on the combined insert id and
+## 0/1 first step indicator to accomplish this (plus a little
+## bit of an addition hack after the fact to generate a
+## final sessionId that is not exactly sequential).
+clicks = unnest(logs, json) %>% 
+  mutate(first=ifelse(step==1,1,0)) %>%
+  unite("temp", insertId, first, sep="_", remove=FALSE) %>%
+  mutate(sessionId=data.table::rleid(temp)) %>%
+  mutate(sessionId=sessionId + first) %>%
+  unite("temp", sessionId, insertId, remove=FALSE) %>%  
+  mutate(sessionId=data.table::rleid(temp)) %>%
+  select(-c(temp))
+
+## break the sessions into categories:
+# 1. crystal bowl (the step number increases exponentially)
+# 2. food fight (the step number increases by increments of one)
+# 3. NA -- too short to categorize confidently (lets say 5 or less)
+sessions = clicks %>% 
+  unite("user", ip.address, user.agent) %>% 
+  group_by(sessionId) %>% 
+  summarize(start = min(step), 
+            end=max(step), 
+            clicks=length(step),
+            first(step), 
+            length(step), 
+            sinceLast=first(time),
+            duration=(sum(time)-first(time)),
+            wk=first(week), 
+            userhash=first(user)
+            ) %>%
+  mutate(category=if_else(clicks<5,"NA",if_else(((end-start)/clicks<1.1),"Food Fight","Crystal Bowl")),
+         userhash=substring(v.digest(userhash),1,8))
+# now let's join these details back into clicks
+clicks = left_join(x=clicks, y=sessions, by="sessionId")
+
+doubled.clicks = clicks %>% mutate(category="ANY") %>% union_all(clicks)
+```
+
+## Usage
+
+There are two main ways a user can interact with the app
+
+1. **Food Fight** lets users look at random food pairings and click on the one that looks better to them
+2. **Crystal Bowl** takes the user through something like a decision tree to help navigate their current appetite -- at each point the user clicks on the image that looks better and that selection eliminates a large section of the available food images
+
+```{r, echo=FALSE}
+#doubled.clicks %>% 
+clicks %>% 
+#  unite("user", ip.address, user.agent) %>% 
+  group_by(sessionId, category) %>% 
+  summarize(clicks = length(week),  
+            week= max(week),
+            userhash = first(userhash)) %>%
+  group_by(week, category) %>%
+  summarize(
+    clicks=sum(clicks), 
+    sessions = n(),
+    users = n_distinct(userhash)
+    ) %>%
+  gather("type", "count", -week, -category) %>%
+  ggplot() +
+#  ylab("clicks") + 
+  ggtitle("Weekly Usage Numbers") + 
+#  geom_col(aes(x=week,y=sessions)) +
+  geom_col(
+    aes(x=week,y=count,fill=category),
+    position = position_dodge2(preserve="single")
+    ) +
+  geom_vline(xintercept = lubridate::date(c("2019-02-21","2019-04-12","2019-02-21","2019-04-12","2019-02-21","2019-04-12"))) +
+  annotate("text",
+           x=lubridate::date("2019-04-13"),
+           y=Inf,
+           label="default to \ncrystal bowl", 
+           hjust=0, vjust=1, size=3) +
+  annotate("text",
+           x=lubridate::date("2019-02-22"),
+           y=Inf,
+           label="decision tree \nupdated", 
+           hjust=0, vjust=1, size=3) +
+    facet_grid(type ~ ., scales="free") 
+
+```
+The above chart shows weekly usage by channel in terms of total number of clicks, sessions* and distinct users. 
+
+> \* For Food Fight, sessions arbitrarily refer to a series of 20 images clicked, so a user who clicks on 100 images in one sitting will be counted as 5 separate sessions. The NA session type refers to sessions of 5 or fewer clicks.
+
+On April 24, we switched the default channel from Food Fight to Crystal Bowl. We can see pretty clearly from the graphs above that no matter how you count traffic, it fell off for Food Fight after this point. 
+
+# Counting Users
+
+Distinct user counting is kind of a weird world. We want to know how many physical people are using our app in the real world, but we always use some proxy to get that number. Logins generally offer the closest approximation to the real thing, but even they are subject to manipulation when there is incentive for users to create multiple accounts. 
+
+Short of logins, the three typical ways of identifying distinct users are cookies, useragent and ip address. We haven't been using cookies at all, but our logs do currently collect ip address and user agent. The graph below illustrates some of failings of each of the approaches when it comes to counting distinct users.
+
+```{r, echo=FALSE}
+#doubled.clicks %>% 
+clicks %>% 
+  select(userhash, user.agent, ip.address, month, week, day) %>%
+  gather("unit", "period", -userhash, -user.agent, -ip.address) %>%
+  gather("user.proxy", "user.id", -unit, -period) %>%
+  group_by(unit, period, user.proxy) %>% 
+  summarize(
+    users = n_distinct(user.id)
+    ) %>%
+  ggplot() +
+#  ylab("clicks") + 
+  ggtitle("Distinct users by time period") + 
+#  geom_col(aes(x=week,y=sessions)) +
+  geom_col(
+    width=5,
+    aes(x=period,y=users,fill=unit),
+    position = position_dodge2(preserve="single")
+    ) +
+    facet_grid(. ~ user.proxy) 
+
+```
+
+Clearly, the true number of distinct users can only increase as you widen the window within which you count those distinct users -- for instance, if you had three distinct users over the course of the month, it is very possible that each one only visited once and that they all visited on different weeks. 
+
+However, widening the time window also increases the likelihood of picking up false positives for distinct users -- while I may visit the site from my phone and my computer, it is unlikely that I would use both devices at the same time for the same purpose. 
+
+*User Agent* identifies a specific finger print for the users browser type, version, operating system and potentially other details. There are so many different combinations that this acts as a very good proxy for distinct users. The two main problems are that many users will share the most recent version of common configurations (thus under reporting the distinct user count), but also that new browser versions roll out quite frequently (thus over reporting the user count over time). 
+
+*IP Address* identifies the public internet address that the user connected to our service from. Two devices connecting from the same LAN may have different IP addresses on the internal network, but externally they will often share the same external facing IP address (causing us to under report the user count). On the other hand, most of the connected devices that we use these days are portable and we connect from different Wifi networks while on the go (causing us to over report the distinct user count).
+
+*Combined User Agent / IP Address* uses the combination of the above two values to identify distinct users. This helps to mediate some of the under reporting, but tends to exacerbate the over reporting. In our case, we've hashed the combined value and reported the count of distinct hash values. Smaller hash spaces lead to a higher likelihood of hash collisions (meaning two distinct inputs may have the same hashed output value). On the down side, this can lead to under reporting, but on the up side, it also has certain privacy protecting advantages.
+
+Keep in mind that for the graph above, we have some pretty good first hand knowledge that the app has one frequent user, and a few other much more casual users. In the month of March, two of the sites biggest users moved cities. As a result, we can see a spike in the number of distinct users based on IP Address for the month of March. 
