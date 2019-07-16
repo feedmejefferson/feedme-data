@@ -1,0 +1,238 @@
+---
+title: "Log Analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## New App Logs
+
+We've updated the app. As a result, the logs are a little bit different. I started to go off on a huge tangent regarding why we made the changes and the resulting data privacy consequences, but none of that was really relevant to the topic of processing the logs, so I'll skip all that for now and get to the point.
+
+### New Log Format
+
+One major change to the new log format is that session data comes in a single message -- we no longer need to stitch our sessions together from multiple messages. It is however possible that messages may contain multiple sessions. 
+
+#### What exactly is a session?
+
+Good question... By session, we mean a short continuous period of time during which the user interacted with the app. There are some blurry lines here though -- if the user was distracted mid session by an email, do we now have two sessions? It kind of depends. In our case, we currently have two different uses:
+
+1. Crystal Bowl -- the user wants us to help them decide what to eat
+2. Food Fight -- the user just wants to click on random food images and tell us which looks better to them
+
+In the case of _Crystal Bowl_, I think a session is pretty clear cut -- the user starts at the beginning image and clicks until we suggest a single food image. In the case of _Food Fight_, the meaning of a session is a bit blurrier. This is a great avenue for our data analysis to investigate though. Here are some relevante questions:
+
+1. How are users using the app - Crystal Bowl or Food Fight? 
+2. How often are users distracted mid session?
+3. How long are typical sessions?
+4. How many atypical sessions do we have and what do they look like?
+
+### Back to the Log Format
+
+Each session log contains a series of clicks. Each click contains the following details:
+
+* step -- this comes in two forms: in the case of food fight it starts at one and increments by one; in the case of crystal bowl, it starts at one and then either doubles, or doubles and increments by one (see more below)
+* chosen -- the id/name of the image that was selected
+* notChosen -- the id/name of the image that was not selected
+* position -- Was the selected image the first or second image (unfortunately this doesn't tell us if the orientation was portrait or landscape)
+* time -- how many milliseconds ellapsed between the selection of the last image and this one
+* hour -- what is the local hour of day (using a 24 hour clock) _this might be useful for identifying how appetites differ throughout the day_
+
+The step number is a bit tricky -- crystal bowl uses the step number to uniquely identify what branch of the decision tree the user is currently on. This is useful information for analysis, but probably has to be preprocessed to really draw out that usefulness. The step pattern is also our only way of currently differentiating between crystal bowl and food fight usage.
+
+The step number is really critical for seeing how people are using the application. Are they clicking on the back button? We can see that in instances where the step number stays the same or even decreases. Are they stopping before reaching a terminal branch in the decision tree?
+
+#### Session Data
+
+In addition to all of the details reported for every click, we also have a few session level details:
+
+* server timestamp: When was the log message received by the server
+* ip address: What ip address was the log sent from _**(note: this field has definite privacy implications)**_
+* user agent: What browser was the used _**(note: this field has definite privacy implications)**_
+
+IP address and User Agent can be used as decent proxies for counting distinct users. That being said, the signal is pretty noisy for a number of reasons:
+
+1. The same user may have multiple devices that they connect from
+2. The same user may have multiple locations that they connect from
+3. Over time users will tend to update their browser
+4. Multiple users may share the same device
+
+Basically, aside from situations where the last point outweighs all others, you can see that the number of users inferred from this approach will always be overstated. On the other hand, the factors that lead to a _user multiplier_ tend to increase over time. Within a given day or week, most individual users will only have a multiple in the low single digits, while for some users that number could easily approach high double digits over the course of a year. 
+
+_**So...**_ if we're interested in relative changes in distinct visitors from week to week, this inferrential approach should be a decent indicator. Further, if we're worried about privacy concerns, for smaller user bases, we could probably just hash the combination of ip address and user agent and limit the number of bits that we maintain from the hash. This would increase the likelihood of collisions which sounds bad, but is actually good from a data privacy perspective. 
+
+#### Relevant Questions
+
+1. How many logs have we received each month?
+2. How many relative distinct users have we seen each month?
+
+## Analysis
+
+First we need to load the data and expand our sessions into clicks.
+
+```{r, include=FALSE}
+library(tidyverse)
+library(jsonlite)
+library(digest)
+v.digest=Vectorize(digest)
+
+logs = fs::dir_ls("raw",recurse = TRUE, regexp = "\\.json$") %>%
+  map_dfr(ndjson::stream_in) %>%
+  filter(severity=="INFO") %>%
+  select(insertId, timestamp, textPayload) %>%
+  mutate(month=lubridate::month(timestamp),
+         week=lubridate::floor_date(lubridate::date(timestamp),unit='weeks'))
+
+
+## there has to be a better way to do this inline. scan gives
+## us quoted parsing with a delimiter out of the box, but this
+## is definitely a bit hacky
+textPayload = scan(text=logs$textPayload, what=list(ip.address="", user.agent="", json=""))
+logs$ip.address = textPayload$ip.address
+logs$user.agent = textPayload$user.agent
+logs$json = textPayload$json
+## we need to coerce the modified df back into a homogenous type
+## for the unnest to work
+logs = as_tibble(logs)
+logs$json = map(logs$json, fromJSON)
+logs = select(logs, -c(textPayload))
+
+## This should generate a new sequential id when either
+## the insertId changes, or the step number equals 1. We
+## use "run length encoding" on the combined insert id and
+## 0/1 first step indicator to accomplish this (plus a little
+## bit of an addition hack after the fact to generate a
+## final sessionId that is not exactly sequential).
+clicks = unnest(logs, json) %>% 
+  mutate(first=ifelse(step==1,1,0)) %>%
+  unite("temp", insertId, first, sep="_", remove=FALSE) %>%
+  mutate(sessionId=data.table::rleid(temp)) %>%
+  mutate(sessionId=sessionId + first) %>%
+  unite("temp", sessionId, insertId, remove=FALSE) %>%  
+  mutate(sessionId=data.table::rleid(temp)) %>%
+  select(-c(temp))
+
+## break the sessions into categories:
+# 1. crystal bowl (the step number increases exponentially)
+# 2. food fight (the step number increases by increments of one)
+# 3. NA -- too short to categorize confidently (lets say 5 or less)
+sessions = clicks %>% 
+  unite("user", ip.address, user.agent) %>% 
+  group_by(sessionId) %>% 
+  summarize(start = min(step), 
+            end=max(step), 
+            clicks=length(step),
+            first(step), 
+            length(step), 
+            sinceLast=first(time),
+            duration=(sum(time)-first(time)),
+            wk=first(week), 
+            userhash=first(user)
+            ) %>%
+  mutate(category=if_else(clicks<5,"NA",if_else(((end-start)/clicks<1.1),"Food Fight","Crystal Bowl")),
+         userhash=substring(v.digest(userhash),1,8))
+# now let's join these details back into clicks
+clicks = left_join(x=clicks, y=sessions, by="sessionId")
+
+```
+
+
+Now we can ask some simple questions. 
+
+How many clicks did we have by week since switching over to the new app?
+
+```{r}
+clicks %>% 
+  ggplot(aes(x=week,y=..count..)) +
+  ylab("clicks") + 
+  ggtitle("Images clicked by week") + 
+  geom_bar()
+```
+
+
+How many distinct users did we see each week?
+
+```{r}
+clicks %>% 
+  unite("user", ip.address, user.agent) %>% 
+  group_by(week, user) %>% 
+  summarize(clicks = length(week)) %>%
+  ggplot(aes(x=week,y=..count..)) +
+  ylab("unique users") + 
+  ggtitle("Relative User count by week") + 
+  geom_bar()
+```
+
+And what about sessions versus log messages? Can we dig a little bit into that relationship and even see which kinds of sessions we're dealing with? Again, it would be nice to see counts by week.
+
+```{r}
+clicks %>% 
+#  unite("user", ip.address, user.agent) %>% 
+  group_by(insertId) %>% 
+  summarize(clicks = length(week), sessions = sum(first), week= max(week)) %>%
+  group_by(week) %>%
+  summarize(
+    #clicks=sum(clicks), 
+    sessions = sum(sessions), logs=length(insertId)) %>%
+  gather("key", "value", -week) %>%
+  ggplot() +
+  ylab("sessions") + 
+#  ggtitle("Weekly logs versus sessions") + 
+#  geom_col(aes(x=week,y=sessions)) +
+  geom_col(aes(x=week,y=value,fill=key),position = "dodge")
+```
+
+```{r}
+clicks %>% 
+#  unite("user", ip.address, user.agent) %>% 
+  group_by(sessionId) %>% 
+  summarize(clicks = length(week),  
+            week= max(week),
+            category = max(category)) %>%
+  group_by(week, category) %>%
+  summarize(
+    clicks=sum(clicks), 
+    sessions = length(sessionId)) %>%
+  ggplot() +
+  ylab("clicks") + 
+#  ggtitle("Weekly logs versus sessions") + 
+#  geom_col(aes(x=week,y=sessions)) +
+  geom_col(
+    aes(x=week,y=clicks,fill=category),
+    position = position_dodge2(preserve="single")
+    ) +
+  geom_vline(xintercept = lubridate::date(c("2019-02-21","2019-04-12"))) +
+  annotate("text",x=lubridate::date(c("2019-02-22","2019-04-13")),y=Inf,label=c("decision tree \nupdated", "default to \ncrystal bowl"), hjust=0, vjust=1, size=3) 
+```
+
+
+
+```{r}
+## now filter our clicks to exclude everything that isn't a 
+## standard crystal bowl session from after Febrary 21 (when the 
+## last decision tree model was uploaded)
+## only include sessions that reached terminal branch and took
+## no more than one minute
+cb = clicks %>%
+  filter(
+    category=="Crystal Bowl" & 
+    timestamp > "2019-02-21" & 
+    clicks > 9 &
+    duration < 60000) %>%
+  mutate(time=if_else(step==1,as.integer(NA),time))
+
+branches = intToBits(cb$end)
+branches = matrix(as.integer(branches), nrow=32)
+branches = data.frame(t(branches[1:12,]))
+cb = bind_cols(cb, branches)
+
+food.stats = cb %>% 
+  select(chosen, notChosen, time, step, hour) %>%
+  gather("choice", "food", -time, -step, -hour) %>%
+  mutate(score=if_else(choice=="chosen",1,-1)) %>% 
+  group_by(food) %>% 
+  summarize(score = sum(score), averageTime=mean(time), impressions = n()) 
+
+```
