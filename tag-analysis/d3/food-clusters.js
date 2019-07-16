@@ -56,6 +56,7 @@ function updateRoot(root) {
     .on("click", function(d) {if(d==root){updateRoot(root.parent)}else{updateRoot(d)}})
     .on("mouseover", function(d) {
       img.attr("src", "../images/images/" + d.names[1]);
+      $("#image-attributions").html(d.names[1]);
       //img.attr("src", "http://www.feedmejefferson.com/images/thumbs/" + d.names[1]);
       $.ajax({
         dataType: "text",

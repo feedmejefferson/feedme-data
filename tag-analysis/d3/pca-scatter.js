@@ -86,8 +86,8 @@ d3.csv("pca-scatter.csv", function(error, data) {
         //.attr("r", function(d) { return size(d.P); })
         .attr("r", function(d) { return 2; })
         .on("mouseover", function(d) {      
-            img.attr("src", "../images/thumbs/" + d.image);
- //             img.attr("src", "http://www.feedmejefferson.com/images/thumbs/" + d.image);
+ //           img.attr("src", "../images/thumbs/" + d.image);
+              img.attr("src", "http://feedmejefferson.github.io/images/thumbs/" + d.image);
             })   
         .style("fill", function(d) { return color(d.S); });
 
