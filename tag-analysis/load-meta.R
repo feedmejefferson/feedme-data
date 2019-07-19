@@ -55,4 +55,16 @@ load_tag_vectors = function() {
   return(tag_vectors)
 }
 
+normalize = function(x) {
+  ## lets assume x is a dataframe with n rows, one label column
+  ## and 300 numeric columns representing a 300 dimension vector
+  df = x %>% ungroup()
+  label = df %>% select(-starts_with("X"))
+  vectors = df %>% select(starts_with("X"))
+  mtx = as.matrix(vectors)
+  mags = sqrt(rowSums(mtx^2))
+  mtx = mtx/mags
+  return(data.frame(label[,1],as.data.frame(mtx)))
+}
+
 
