@@ -91,7 +91,7 @@ toJsonWeightedTree<-function(hc,values){
 
 
 vsplit <- function(df,dimension) {
-  if(dimension<5) {
+  if(dimension<1) {
     i = cut(1:nrow(df), 
           labels=c(1,2,3), 
           breaks=quantile(1:nrow(df),probs=c(0,.4,.6,1)),

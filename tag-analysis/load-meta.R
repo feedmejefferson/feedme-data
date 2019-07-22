@@ -9,7 +9,7 @@ cannonicalize_title = function(title) {
 }
 
 cannonicalize_tag = function(tag) {
-  return(gsub(" ", "-", tolower(tag)))
+  return(gsub(" ", "", tolower(tag)))
 }
 
 

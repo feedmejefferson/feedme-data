@@ -22,20 +22,7 @@
 
 library(tidyverse)
 library(jsonlite)
-
-load_meta_folder = function(folder) {
-  fs::dir_ls(folder, regexp = "\\.jpg$") %>%
-    map_dfr(ndjson::stream_in) %>%
-    gather("tag.type", 
-           "tag", 
-           -c(id, title, 
-              originTitle, originUrl, 
-              author, authorProfileUrl, 
-              license, licenseUrl)) %>%
-    mutate(tag.type=gsub("\\..*$", "", tag.type), 
-           tag=tolower(tag)) %>%
-    filter(!is.na(tag)) 
-}
+source("load-meta.R")
 
 
 fixed = load_meta_folder("fixed/photos")
@@ -73,6 +60,11 @@ food.stats = u %>% group_by(id, status) %>%
   mutate(count=added+kept+removed) %>% 
   mutate(pivot=(removed+kept+1)/(added+kept+1)) %>% 
   arrange(pivot)
+
+stop_tags = tag.stats %>% filter(pivot >=3) %>%
+  select(tag)
+
+write_csv(stop_tags, "stop-tags.txt", col_names = FALSE)
 
 ## we can potentially use high pivot scores to auto filter
 ## tags that don't have value

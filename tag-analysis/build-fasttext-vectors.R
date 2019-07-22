@@ -3,7 +3,8 @@ library(jsonlite)
 source("load-meta.R")
 
 ## load all of the metadata -- for now we're only loading fixed
-fixed = load_meta_folder("fixed/photos")
+#fixed = load_meta_folder("fixed/photos")
+fixed = load_meta_folder("images/photos")
 
 tags = fixed %>% select(tag) %>% 
   group_by(tag) %>%

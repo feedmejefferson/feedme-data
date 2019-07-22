@@ -1,11 +1,10 @@
 var radius = 400;
 var transitionDuration = 0;
 
-// the terms are a bit confusing here -- we're using trees to show
-// our less balanced dendograms generated from hierarchical agglomerative
-// clustering -- thus the term food clusters even though we're using the
-// "tree" layout
-var cluster = d3.layout.tree()
+// the terms are a bit confusing here -- we're using cluster to show
+// our balanced decision trees -- thus the term food tree even though 
+// we're using the "cluster" layout
+var cluster = d3.layout.cluster()
     .size([360, radius - 120]);
 
 var diagonal = d3.svg.diagonal.radial()
@@ -22,7 +21,7 @@ var img = d3.select("#image-container")
     .attr("height","300px")
     .attr("src","");
 
-d3.json("food-clusters.json", function(error, root) {
+d3.json("food-tree.json", function(error, root) {
   if (error) throw error;
   updateRoot(root);
 });

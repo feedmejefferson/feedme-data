@@ -25,19 +25,19 @@ var yAxis = d3.svg.axis()
     .scale(y)
     .orient("left");
 
-var img = d3.select("div#pca-scatter")
+var img = d3.select("#image-container")
     .append("img")
-    .attr("width","100px")
+    .attr("height","300px")
     .attr("src","");
 
-var outerSvg = d3.select("div#pca-scatter")
+var outerSvg = d3.select("div#food-plot")
     .append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom);
 var svg = outerSvg.append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-d3.csv("pca-scatter.csv", function(error, data) {
+d3.csv("food-plot.csv", function(error, data) {
   if (error) throw error;
 
   var availableDimensions = Object.keys(data[0]);
@@ -86,9 +86,28 @@ d3.csv("pca-scatter.csv", function(error, data) {
         //.attr("r", function(d) { return size(d.P); })
         .attr("r", function(d) { return 2; })
         .on("mouseover", function(d) {      
- //           img.attr("src", "../images/thumbs/" + d.image);
-              img.attr("src", "http://feedmejefferson.github.io/images/thumbs/" + d.image);
-            })   
+            img.attr("src", "/images/images/" + d.image);
+ //             img.attr("src", "http://feedmejefferson.github.io/images/thumbs/" + d.image);
+            $.ajax({
+              dataType: "text",
+              url: "/images/attributions/" + d.image + ".txt",
+              success: function(data) {
+                $("#image-attributions").html(data);
+              }
+            });
+            $.ajax({
+              dataType: "json",
+              url: "/images/photos/" + d.image.replace(/jpg/, "json"),
+              success: function(data) {
+            //          console.log(data);
+                $("#is-tags").html(JSON.stringify(data.isTags));
+                $("#contains-tags").html(JSON.stringify(data.containsTags));
+                $("#other-tags").html(JSON.stringify(data.descriptiveTags));
+                $("#title").html(data.title);
+                $("#edit-link").html(`<a href="https://feedme-stage.firebaseapp.com/photos/${d.image}">${d.image}</a>`);
+              }
+            })
+          })   
         .style("fill", function(d) { return color(d.S); });
 
   function plot(xDim, yDim) {
