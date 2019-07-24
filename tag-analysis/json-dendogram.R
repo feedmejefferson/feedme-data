@@ -1,94 +1,4 @@
-library(rjson)
-
-toLabeledJsonNodeTree<-function(hc){
-  
-  labels<-hc$labels
-  merge<-data.frame(hc$merge)
-  nodes<-vector("list",nrow(merge))
-  
-  for (i in (1:nrow(merge))) {
-    children <- vector("list",2)
-    for(j in (1:2)) {
-      if(merge[i,j]<0) {
-        label <- labels[-merge[i,j]]
-        children[[j]] <- list(names=c(label,label,label,label))
-      } else {
-        children[[j]] <- nodes[[merge[i,j]]]
-      }
-    }
-    nodes[[i]] <- list(names=c(children[[1]][["names"]][1],children[[1]][["names"]][4],children[[2]][["names"]][1],children[[2]][["names"]][4]),children=children)
-  }
-  return(toJSON(nodes[[nrow(merge)]]))
-}
-
-toJsonNodeArray<-function(hc){
-  
-  labels<-hc$labels
-  merge<-data.frame(hc$merge)
-  nodes<-vector("list",nrow(merge))
-
-  for (i in (1:nrow(merge))) {
-    cnames <- vector("list",2)
-    children <- vector("list",2)
-    for(j in (1:2)) {
-      if(merge[i,j]<0) {
-        label <- labels[-merge[i,j]]
-        cnames[[j]] <- list(names=c(label,label,label,label))
-        children[[j]] <- NULL
-      } else {
-        cnames[[j]] <- nodes[[merge[i,j]]]
-        children[[j]] <- nrow(merge) - merge[i,j]
-      }
-    }
-    nodes[[i]] <- list(names=c(cnames[[1]][["names"]][1],cnames[[1]][["names"]][4],cnames[[2]][["names"]][1],cnames[[2]][["names"]][4]),children=children)
-  }
-  return(toJSON(rev(nodes)))
-}
-
-toJsonNodeTree<-function(hc){
-  
-  labels<-hc$labels
-  merge<-data.frame(hc$merge)
-  nodes<-vector("list",nrow(merge))
-  
-  for (i in (1:nrow(merge))) {
-    children <- vector("list",2)
-    for(j in (1:2)) {
-      if(merge[i,j]<0) {
-        label <- labels[-merge[i,j]]
-        children[[j]] <- list(value=label)
-      } else {
-        children[[j]] <- nodes[[merge[i,j]]]
-      }
-    }
-    nodes[[i]] <- list(children=children)
-  }
-  return(toJSON(nodes[[nrow(merge)]]))
-}
-
-toJsonWeightedTree<-function(hc,values){
-  
-  labels<-hc$labels
-  merge<-data.frame(hc$merge)
-  nodes<-vector("list",nrow(merge))
-  
-  for (i in (1:nrow(merge))) {
-    children <- vector("list",2)
-    for(j in (1:2)) {
-      if(merge[i,j]<0) {
-        index <- -merge[i,j]
-        value=values$labels[index]
-        size=values$counts[index]
-        children[[j]] <- list(value=value,size=size)
-      } else {
-        children[[j]] <- nodes[[merge[i,j]]]
-      }
-    }
-    nodes[[i]] <- list(size=children[[1]][["size"]]+children[[2]][["size"]],children=children)
-  }
-  return(toJSON(nodes[[nrow(merge)]]))
-}
-
+library(jsonlite)
 
 vsplit <- function(df,dimension) {
   if(dimension<1) {
@@ -107,36 +17,46 @@ vsplit <- function(df,dimension) {
   }
 }
 
-
-buildBalancedLabeledNode <- function(subset, dimension) {
+addBranchToTree <- function(subset, dimension, branch, tree) {
   l = nrow(subset)
-  name=c(rownames(subset)[ceiling(l/2)])
-  if(l<2) {
-    return(list(names=c(name,name)))
+  if(l==1) {
+    # if the branch is a terminal node, add the node indexed 
+    # by it's branch
+    tree[as.character(branch)]=rownames(subset)[1]
+    return(tree)
   } else {
+    # otherwise process the child branches recursively
     sorted = subset[order(subset[,dimension]),]
-    children=lapply(vsplit(sorted,dimension),function(x) {buildBalancedLabeledNode(x,dimension+1)})
-    return(list(names=c(name,name),children=children))
-  }
-}
-buildBalancedNode <- function(subset, dimension) {
-  l = nrow(subset)
-  if(l<2) {
-    return(list(value=rownames(subset)[1]))
-  } else {
-    sorted = subset[order(subset[,dimension]),]
-    children=lapply(vsplit(sorted,dimension),function(x) {buildBalancedNode(x,dimension+1)})
-    return(list(children=children))
+    split = vsplit(sorted,dimension)
+    tree = addBranchToTree(split[[1]],dimension+1,branch*2,tree)
+    tree = addBranchToTree(split[[2]],dimension+1,branch*2+1,tree)
+    return(tree)
   }
 }
 
-pcaToBalancedTree <- function(subset) {
-  node=buildBalancedNode(subset,1)
-  return(toJSON(node))
+projectionToIndexedTree <- function(subset) {
+  tree = list()
+  tree = addBranchToTree(subset,1,1,tree)
+  return(jsonlite::toJSON(tree, auto_unbox = TRUE))
 }
-pcaToBalancedLabeledTree <- function(subset) {
-  node=buildBalancedLabeledNode(subset,1)
-  return(toJSON(node))
+
+
+create_branch = function(branch, pointer, cluster) {
+  if(pointer<0) {
+    b = list()
+    b[as.character(branch)] = clusters$labels[-pointer]
+    return(b)
+  } else {
+    return(append(
+      create_branch(branch*2,clusters$merge[pointer,1],cluster),
+      create_branch(branch*2+1,clusters$merge[pointer,2],cluster)
+    ))
+  }
 }
+clusterToIndexedTree = function(cluster) {
+  return(jsonlite::toJSON(create_branch(1, nrow(clusters$merge), clusters),auto_unbox = TRUE))
+}
+
+
 
 

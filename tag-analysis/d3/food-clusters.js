@@ -22,9 +22,34 @@ var img = d3.select("#image-container")
     .attr("height","300px")
     .attr("src","");
 
-d3.json("food-clusters.json", function(error, root) {
+
+// convert our custom indexed binary tree format to a standard 
+// node with children structure that d3 understands
+function convertBranch(branch, tree) {
+  var b = { }
+  if(tree[branch]) {
+//    console.log(branch);
+    b.value = tree[branch]; 
+    delete(tree[branch]);
+  } else {
+    b.children = [convertBranch(branch*2, tree), convertBranch(branch*2+1, tree)]
+    if(b.children && b.children[0].children) {
+      b.value = b.children[0].children[1].value;
+    } else {
+      b.value = b.children[0].value;
+    }
+  }
+  return(b);
+}
+
+d3.json("food-clusters.json", function(error, tree) {
   if (error) throw error;
-  updateRoot(root);
+  // I wish I didn't have to fully mutate the tree object, but it seems to be bound
+  // to d3 already and replacing it with another object doesn't work
+  b = convertBranch(1,tree)
+  tree.value=b.value;
+  tree.children=b.children;
+  updateRoot(tree);
 });
 
 //d3.json("clusters.json", function(error, root) {
@@ -59,26 +84,20 @@ function updateRoot(root) {
   node
     .on("click", function(d) {if(d==root){updateRoot(root.parent)}else{updateRoot(d)}})
     .on("mouseover", function(d) {
-      img.attr("src", "../images/images/" + d.names[1]);
-      $("#image-attributions").html(d.names[1]);
+      img.attr("src", "../images/images/" + d.value);
       //img.attr("src", "http://www.feedmejefferson.com/images/thumbs/" + d.names[1]);
       $.ajax({
-        dataType: "text",
-        url: "/images/attributions/" + d.names[1] + ".txt",
-        success: function(data) {
-          $("#image-attributions").html(data);
-        }
-      });
-      $.ajax({
         dataType: "json",
-        url: "/images/photos/" + d.names[1].replace(/jpg/, "json"),
+        url: "/images/photos/" + d.value.replace(/jpg/, "json"),
         success: function(data) {
-//          console.log(data);
-          $("#is-tags").html(JSON.stringify(data.isTags));
-          $("#contains-tags").html(JSON.stringify(data.containsTags));
-          $("#other-tags").html(JSON.stringify(data.descriptiveTags));
+          var attr = `<a href="${data.originUrl}">${data.originTitle}</a>` + 
+          (data.author ? `by <a href="${data.authorProfileUrl}">${data.author}</a>` : "");
           $("#title").html(data.title);
-          $("#edit-link").html(`<a href="https://feedme-stage.firebaseapp.com/photos/${d.names[1]}">${d.names[1]}</a>`);
+          $("#image-attributions").html(attr);
+          $("#is-tags").html(data.isTags ? data.isTags.join(", ") : "");
+          $("#contains-tags").html(data.containsTags ? data.containsTags.join(", ") : "");
+          $("#other-tags").html(data.descriptiveTags ? data.descriptiveTags.join(", ") : "");
+          $("#edit-link").html(`Editor link: <a href="https://feedme-stage.firebaseapp.com/photos/${d.value}">${d.value}</a>`);
         }
       });
 

@@ -92,12 +92,26 @@ projected.csv <- data.frame("image"=rownames(projected),projected)
 write.csv(file="d3/food-plot.csv",x=projected.csv,row.names = FALSE)
 
 # decision tree
-JSON=pcaToBalancedLabeledTree(data.frame(projected))
+JSON=projectionToIndexedTree(data.frame(projected))
 write(JSON, "d3/food-tree.json")
 
 # food clusters
 dists = dist(projected, method="euclidean")
 clusters = hclust(dists, "ward.D2")
-JSON <- toLabeledJsonNodeTree(clusters)
-write(JSON, "d3/food-clusters.json")
+tree = clusterToIndexedTree(clusters)
+write(tree,"d3/food-clusters.json")
+
+
+# write out the basket files
+#v = t(projected)
+#vectors = split(v, rep(1:ncol(v), each = nrow(v)))
+#names(vectors) = gsub(".jpg","",rownames(projected))
+#write(jsonlite::toJSON(vectors), "vectors.all.json")
+
+#attributions = meta %>% 
+#  select(author, authorProfileUrl, id, license, licenseUrl, originTitle, originUrl) %>%
+#  distinct_all() %>% head(3)
+
+
+
 
