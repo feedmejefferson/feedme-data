@@ -87,26 +87,32 @@ d3.csv("food-plot.csv", function(error, data) {
         .attr("r", function(d) { return 2; })
         .on("mouseover", function(d) {      
             img.attr("src", "/images/images/" + d.image);
- //             img.attr("src", "http://feedmejefferson.github.io/images/thumbs/" + d.image);
-            $.ajax({
-              dataType: "text",
-              url: "/images/attributions/" + d.image + ".txt",
-              success: function(data) {
-                $("#image-attributions").html(data);
-              }
-            });
             $.ajax({
               dataType: "json",
               url: "/images/photos/" + d.image.replace(/jpg/, "json"),
               success: function(data) {
-            //          console.log(data);
-                $("#is-tags").html(JSON.stringify(data.isTags));
-                $("#contains-tags").html(JSON.stringify(data.containsTags));
-                $("#other-tags").html(JSON.stringify(data.descriptiveTags));
+                var attr = `<a href="${data.originUrl}">${data.originTitle}</a>` + 
+                (data.author ? `by <a href="${data.authorProfileUrl}">${data.author}</a>` : "");
                 $("#title").html(data.title);
-                $("#edit-link").html(`<a href="https://feedme-stage.firebaseapp.com/photos/${d.image}">${d.image}</a>`);
+                $("#image-attributions").html(attr);
+                $("#is-tags").html(data.isTags ? data.isTags.join(", ") : "");
+                $("#contains-tags").html(data.containsTags ? data.containsTags.join(", ") : "");
+                $("#other-tags").html(data.descriptiveTags ? data.descriptiveTags.join(", ") : "");
+                $("#edit-link").html(`Editor link: <a href="https://feedme-stage.firebaseapp.com/photos/${d.image}">${d.image}</a>`);
               }
-            })
+            });
+            // $.ajax({
+            //   dataType: "json",
+            //   url: "/images/photos/" + d.image.replace(/jpg/, "json"),
+            //   success: function(data) {
+            // //          console.log(data);
+            //     $("#is-tags").html(JSON.stringify(data.isTags));
+            //     $("#contains-tags").html(JSON.stringify(data.containsTags));
+            //     $("#other-tags").html(JSON.stringify(data.descriptiveTags));
+            //     $("#title").html(data.title);
+            //     $("#edit-link").html(`<a href="https://feedme-stage.firebaseapp.com/photos/${d.image}">${d.image}</a>`);
+            //   }
+            // })
           })   
         .style("fill", function(d) { return color(d.S); });
 
