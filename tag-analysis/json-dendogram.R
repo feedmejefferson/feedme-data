@@ -41,20 +41,26 @@ projectionToIndexedTree <- function(subset) {
 }
 
 
-create_branch = function(branch, pointer, cluster) {
+create_branch = function(branch, pointer, cluster, values=NULL) {
   if(pointer<0) {
     b = list()
-    b[as.character(branch)] = clusters$labels[-pointer]
+    if(is.null(values)) {
+      b[as.character(branch)] = clusters$labels[-pointer]
+    } else {
+      b[as.character(branch)] = list(as.list(values[-pointer,]))
+    }
     return(b)
   } else {
     return(append(
-      create_branch(branch*2,clusters$merge[pointer,1],cluster),
-      create_branch(branch*2+1,clusters$merge[pointer,2],cluster)
+      create_branch(branch*2,clusters$merge[pointer,1],cluster,values),
+      create_branch(branch*2+1,clusters$merge[pointer,2],cluster,values)
     ))
   }
 }
-clusterToIndexedTree = function(cluster) {
-  return(jsonlite::toJSON(create_branch(1, nrow(clusters$merge), clusters),auto_unbox = TRUE))
+clusterToIndexedTree = function(cluster, values=NULL) {
+  return(jsonlite::toJSON(
+    create_branch(1, nrow(clusters$merge), clusters, values),
+    auto_unbox = TRUE))
 }
 
 

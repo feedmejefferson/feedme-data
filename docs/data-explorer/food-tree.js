@@ -33,11 +33,11 @@ function convertBranch(branch, tree) {
     delete(tree[branch]);
   } else {
     b.children = [convertBranch(branch*2, tree), convertBranch(branch*2+1, tree)]
-    if(b.children && b.children[0].children) {
-      b.value = b.children[0].children[1].value;
-    } else {
-      b.value = b.children[0].value;
+    var middleChild = b.children[0];
+    while(middleChild.children) {
+      middleChild = middleChild.children[1];
     }
+    b.value = middleChild.value;
   }
   return(b);
 }

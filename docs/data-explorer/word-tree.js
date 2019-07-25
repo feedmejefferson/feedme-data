@@ -13,10 +13,35 @@ var svg = d3.select("#svg-container").append("svg")
     .append("g")
     .attr("transform", "translate(" + radius + "," + radius + ")");
 
-d3.json("word-tree.json", function(error, root) {
-  if (error) throw error;
-  updateRoot(root);
+// convert our custom indexed binary tree format to a standard 
+// node with children structure that d3 understands
+function convertBranch(branch, tree) {
+    var b = { }
+    if(tree[branch]) {
+      b = tree[branch]; 
+      delete(tree[branch]);
+    } else {
+      b.children = [convertBranch(branch*2, tree), convertBranch(branch*2+1, tree)]
+      var middleChild = b.children[0];
+      while(middleChild.children) {
+        middleChild = middleChild.children[1];
+      }
+//      b.value = middleChild.value;
+      b.size = b.children[0].size + b.children[1].size
+    }
+    return(b);
+}
+  
+d3.json("word-tree.json", function(error, tree) {
+    if (error) throw error;
+    // I wish I didn't have to fully mutate the tree object, but it seems to be bound
+    // to d3 already and replacing it with another object doesn't work
+    b = convertBranch(1,tree)
+    tree.value=b.value;
+    tree.children=b.children;
+    updateRoot(tree);
 });
+  
 
 //d3.json("clusters.json", function(error, root) {
 function updateRoot(root) {
@@ -48,7 +73,7 @@ function updateRoot(root) {
   node.select("text")
       .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
       .attr("transform", function(d) { return d.x < 180 ? "translate(8)" : "rotate(180)translate(-8)"; })
-      .attr("font-size", function(d) { return d.size ? Math.pow(d.size,.2) + "em" : "1rem"})
+      .attr("font-size", function(d) { return d.size ? Math.pow(d.size,.3) + "em" : "1rem"})
       .text(function(d) { return d.value });
 
   node.select("circle")

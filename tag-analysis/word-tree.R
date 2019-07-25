@@ -1,6 +1,7 @@
 library(tidyverse)
 library(jsonlite)
 source("./load-meta.R")
+source("./json-dendogram.R")
 
 ## load metadata for applicable foods
 ## -- focusing on fixed ones for now
@@ -32,17 +33,19 @@ tagspace = inner_join(tag_occurences,dictionary)
 
 
 labels <- tagspace$tag
-counts <- tagspace$n
+#counts <- tagspace$n
+values <- tagspace %>% 
+  mutate(value=tag, size=n) %>%
+  select(value, size) 
 tagspace <- tagspace %>% select(contains("X"))
 mtx = as.matrix(tagspace)
-values <- data.frame(labels,counts)
+#values <- data.frame(labels,counts)
 
 rownames(mtx) <- labels
 d <- dist(mtx)
 clusters <- hclust(d)
 
-source("./json-dendogram.R")
-JSON <- toJsonWeightedTree(clusters,values)
+JSON <- clusterToIndexedTree(clusters, values)
 write(JSON, "d3/word-tree.json")
 
 ## use projection matrix created from svd on adams apple foods
