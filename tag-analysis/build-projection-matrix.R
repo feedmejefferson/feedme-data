@@ -27,7 +27,9 @@ meta = load_meta_folder("images/photos") %>%
 ####
 #### Build the base food space matrix
 ####
-tag_vectors = load_tag_vectors()
+stop_tags = read_csv("stop-tags.txt", col_names = FALSE) %>%
+  rename(tag=X1) 
+tag_vectors = load_tag_vectors() %>% anti_join(stop_tags)
 tag_vectors = normalize(tag_vectors)
 food_tags = meta %>% select(id, tag) %>% distinct_all()
 
@@ -65,7 +67,7 @@ rank = 1:10
 # thus s$v[,rank] = projection matrix!!
 p = s$v[,rank]
 
-write.table(format(p, digits=6), file="projection-matrix.txt", row.names=FALSE, col.names=FALSE)
+write.table(p, file="projection-matrix.txt", row.names=FALSE, col.names=FALSE)
 
 
 ## run some agglomerative hierarchical clustering
@@ -87,11 +89,11 @@ rownames(projected) = rownames(mtx)
 # hierarchical agglomerative clustered tree
 dists = dist(projected, method="euclidean")
 clusters = hclust(dists, "ward.D2")
-JSON <- toLabeledJsonNodeTree(clusters)
+JSON <- clusterToIndexedTree(clusters)
 write(JSON, "d3/food-clusters.json")
 
 # balanced decision tree
-JSON=pcaToBalancedLabeledTree(data.frame(projected))
+JSON=projectionToIndexedTree(data.frame(projected))
 write(JSON, "d3/food-tree.json")
 
 # scatter plot
