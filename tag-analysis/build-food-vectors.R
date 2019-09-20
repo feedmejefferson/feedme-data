@@ -13,7 +13,7 @@ meta = meta %>% anti_join(stop_tags)
 
 ## only use adams apple foods
 ## filter for adams apple hand selected demo foods
-#adams_apple = c("0000644.jpg","0000260.jpg","0000218.jpg","0000004.jpg","0000098.jpg","0000261.jpg","0000879.jpg","0000360.jpg","0000609.jpg","0000861.jpg","0000189.jpg","0000999.jpg","0000009.jpg","0000091.jpg","0000134.jpg","0000358.jpg","0000146.jpg","0000414.jpg","0000249.jpg","0000995.jpg","0000378.jpg","0000284.jpg","0000036.jpg","0000593.jpg","0000495.jpg","0000399.jpg","0000301.jpg","0000095.jpg","0000396.jpg","0000400.jpg","0000110.jpg","0000093.jpg","0000549.jpg","0000096.jpg","0000117.jpg","0000034.jpg","0000473.jpg","0000815.jpg","0000997.jpg","0000781.jpg")
+#adams_apple = c("0000644","0000260","0000218","0000004","0000098","0000261","0000879","0000360","0000609","0000861","0000189","0000999","0000009","0000091","0000134","0000358","0000146","0000414","0000249","0000995","0000378","0000284","0000036","0000593","0000495","0000399","0000301","0000095","0000396","0000400","0000110","0000093","0000549","0000096","0000117","0000034","0000473","0000815","0000997","0000781")
 #meta = meta %>% filter(id %in% adams_apple)
 
 ####
@@ -109,7 +109,7 @@ names(vectors) = gsub(".jpg","",rownames(projected))
 write(jsonlite::toJSON(vectors), "d3/vectors.all.json")
 
 attributions = meta %>% 
-  select(author, authorProfileUrl, id, license, licenseUrl, originTitle, originUrl) %>%
+  select(author, authorProfileUrl, id, license, licenseUrl, originTitle, originUrl, title) %>%
   distinct_all()
 
 write(jsonlite::toJSON(attributions), "d3/attributions.all.json")
