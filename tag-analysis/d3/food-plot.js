@@ -13,9 +13,9 @@ var y = d3.scale.linear()
 
 //var color = d3.scale.category10();
 var color = d3.scale.linear()
-  .range(["white", "blue"]);
-var size = d3.scale.linear()
-  .range([2,10]);
+  .range(["blue", "orange"]);
+//var size = d3.scale.linear()
+  //.range([2,10]);
 
 var xAxis = d3.svg.axis()
     .scale(x)
@@ -43,6 +43,8 @@ d3.csv("food-plot.csv", function(error, data) {
   var availableDimensions = Object.keys(data[0]);
   // get rid of the first element which will always be the image name
   availableDimensions.shift();
+  // similarly get rid of the last element which is the edited flag for coloring points
+  availableDimensions.pop();
 
   var xDims = svg.append("g").attr("class","x-dimensions")
       .selectAll("text")
@@ -70,26 +72,23 @@ d3.csv("food-plot.csv", function(error, data) {
         .attr("class", "y axis");
 
     data.forEach(function(d) {
-      d.S = +d.S;
-      d.C = +d.C;
-      d.U = +d.U;
-      d.P = (d.C)/(d.S);
+      d.edited = d.edited == "TRUE" ? 0 : 1;
     });
 
-  color.domain(d3.extent(data, function(d) { return d.S; })).nice();
-  size.domain(d3.extent(data, function(d) { return d.P; })).nice();
+  color.domain(d3.extent(data, function(d) { return d.edited; })).nice();
+//  size.domain(d3.extent(data, function(d) { return d.P; })).nice();
 
   var points = svg.selectAll(".dot")
         .data(data)
       .enter().append("circle")
         .attr("class", "dot")
         //.attr("r", function(d) { return size(d.P); })
-        .attr("r", function(d) { return 2; })
+        .attr("r", function(d) { return 4; })
         .on("mouseover", function(d) {      
-            img.attr("src", "/images/images/" + d.image);
+            img.attr("src", "/images/images/" + d.image + ".jpg");
             $.ajax({
               dataType: "json",
-              url: "/images/photos/" + d.image.replace(/jpg/, "json"),
+              url: "/images/photos/" + d.image + ".json",
               success: function(data) {
                 var attr = `<a href="${data.originUrl}">${data.originTitle}</a>` + 
                 (data.author ? `by <a href="${data.authorProfileUrl}">${data.author}</a>` : "");
@@ -114,7 +113,7 @@ d3.csv("food-plot.csv", function(error, data) {
             //   }
             // })
           })   
-        .style("fill", function(d) { return color(d.S); });
+        .style("fill", function(d) { return color(d.edited); });
 
   function plot(xDim, yDim) {
 

@@ -84,11 +84,11 @@ function updateRoot(root) {
   node
     .on("click", function(d) {if(d==root){updateRoot(root.parent)}else{updateRoot(d)}})
     .on("mouseover", function(d) {
-      img.attr("src", "/images/images/" + d.value);
+      img.attr("src", "/images/images/" + d.value + ".jpg");
       //img.attr("src", "http://www.feedmejefferson.com/images/thumbs/" + d.names[1]);
       $.ajax({
         dataType: "json",
-        url: "/images/photos/" + d.value.replace(/jpg/, "json"),
+        url: "/images/photos/" + d.value + ".json",
         success: function(data) {
           var attr = `<a href="${data.originUrl}">${data.originTitle}</a>` + 
           (data.author ? `by <a href="${data.authorProfileUrl}">${data.author}</a>` : "");

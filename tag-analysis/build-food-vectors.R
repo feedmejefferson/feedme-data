@@ -7,6 +7,16 @@ source("./json-dendogram.R")
 ## load metadata for applicable foods
 ## -- focusing on fixed ones for now
 meta = load_meta_folder("images/photos")
+
+## identify which metadata entries have or haven't yet been edited
+edited = meta %>% 
+  group_by(id, title, originTitle, tag.type) %>% 
+  summarize(count=n()) %>% 
+  spread(key=tag.type, value=count) %>% 
+  mutate(edited = !(title==originTitle & is.na(descriptiveTags) & is.na(isTags))) %>% 
+  ungroup() %>%
+  select(id, edited)
+
 stop_tags = read_csv("stop-tags.txt", col_names = FALSE) %>%
   rename(tag=X1) 
 meta = meta %>% anti_join(stop_tags)
@@ -89,15 +99,23 @@ rownames(projected) = rownames(mtx)
 
 # scatter plot
 projected.csv <- data.frame("image"=rownames(projected),projected)
+projected.csv <- projected.csv %>% left_join(edited, by = c("image"="id"))
 write.csv(file="d3/food-plot.csv",x=projected.csv,row.names = FALSE)
 
 # decision tree
-JSON=projectionToIndexedTree(data.frame(projected))
+JSON=projectionToIndexedTree(data.frame(projected[,c(2:10,1)]))
 write(JSON, "d3/food-tree.json")
 
 # food clusters
 dists = dist(projected, method="euclidean")
 clusters = hclust(dists, "ward.D2")
+labels = clusters$labels
+values <- data.frame(labels) %>%
+  left_join(edited, by=c("labels"="id")) %>%
+  mutate(value=labels) %>%
+  select(value, edited) 
+tree = clusterToIndexedTree(clusters, values)
+write(tree,"d3/labeled-food-clusters.json")
 tree = clusterToIndexedTree(clusters)
 write(tree,"d3/food-clusters.json")
 

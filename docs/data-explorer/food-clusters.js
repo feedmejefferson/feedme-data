@@ -29,7 +29,8 @@ function convertBranch(branch, tree) {
   var b = { }
   if(tree[branch]) {
 //    console.log(branch);
-    b.value = tree[branch]; 
+    b = tree[branch]; 
+    b.edited = b.edited ? "blue" : "orange";
     delete(tree[branch]);
   } else {
     b.children = [convertBranch(branch*2, tree), convertBranch(branch*2+1, tree)]
@@ -38,11 +39,12 @@ function convertBranch(branch, tree) {
       middleChild = middleChild.children[1];
     }
     b.value = middleChild.value;
+    b.edited = middleChild.edited;
   }
   return(b);
 }
 
-d3.json("food-clusters.json", function(error, tree) {
+d3.json("labeled-food-clusters.json", function(error, tree) {
   if (error) throw error;
   // I wish I didn't have to fully mutate the tree object, but it seems to be bound
   // to d3 already and replacing it with another object doesn't work
@@ -74,6 +76,7 @@ function updateRoot(root) {
       .attr("class", "node");
   enteredNodes
       .append("circle")
+      .style("fill", function(d) { return d.edited})
       .attr("r", 4);
   
   // update all existing ones with details from new data bound to them
@@ -85,10 +88,10 @@ function updateRoot(root) {
     .on("click", function(d) {if(d==root){updateRoot(root.parent)}else{updateRoot(d)}})
     .on("mouseover", function(d) {
       console.log(d);
-      img.attr("src", "/images/images/" + d.value);
+      img.attr("src", "/images/images/" + d.value + ".jpg");
       $.ajax({
         dataType: "json",
-        url: "/images/photos/" + d.value.replace(/jpg/, "json"),
+        url: "/images/photos/" + d.value + ".json",
         success: function(data) {
           var attr = `<a href="${data.originUrl}">${data.originTitle}</a>` + 
           (data.author ? `by <a href="${data.authorProfileUrl}">${data.author}</a>` : "");
