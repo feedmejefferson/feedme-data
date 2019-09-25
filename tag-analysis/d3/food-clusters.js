@@ -114,7 +114,7 @@ function updateRoot(root) {
           $("#is-tags").html(data.isTags ? data.isTags.join(", ") : "");
           $("#contains-tags").html(data.containsTags ? data.containsTags.join(", ") : "");
           $("#other-tags").html(data.descriptiveTags ? data.descriptiveTags.join(", ") : "");
-          $("#edit-link").html(`Editor link: <a href="https://feedme-stage.firebaseapp.com/photos/${d.value}">${d.value}</a>`);
+          $("#edit-link").html(`Editor link: <a href="https://feedme-stage.firebaseapp.com/photos/${d.value}.jpg" target="_blank">${d.value}</a>`);
         }
       });
 

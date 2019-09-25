@@ -97,7 +97,7 @@ d3.csv("food-plot.csv", function(error, data) {
                 $("#is-tags").html(data.isTags ? data.isTags.join(", ") : "");
                 $("#contains-tags").html(data.containsTags ? data.containsTags.join(", ") : "");
                 $("#other-tags").html(data.descriptiveTags ? data.descriptiveTags.join(", ") : "");
-                $("#edit-link").html(`Editor link: <a href="https://feedme-stage.firebaseapp.com/photos/${d.image}">${d.image}</a>`);
+                $("#edit-link").html(`Editor link: <a href="https://feedme-stage.firebaseapp.com/photos/${d.image}.jpg" target="_blank">${d.image}</a>`);
               }
             });
             // $.ajax({
