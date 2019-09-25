@@ -1,3 +1,11 @@
+const searchParm = "id"
+const searchedFood = window.location.search
+  .replace(/\?/,"")
+  .split("&")
+  .map(x => x.split("="))
+  .filter(x => x[0]===searchParm)
+  .map(x => x[1]);
+
 var radius = 400;
 var transitionDuration = 0;
 
@@ -30,14 +38,20 @@ function convertBranch(branch, tree) {
   if(tree[branch]) {
 //    console.log(branch);
     b.value = tree[branch]; 
+    b.color = "white";
+    b.size = 4;
+    if(searchedFood.includes(b.value)){
+      b.size=10;
+      b.color="red"
+    } 
     delete(tree[branch]);
   } else {
-    b.children = [convertBranch(branch*2, tree), convertBranch(branch*2+1, tree)]
-    var middleChild = b.children[0];
+    const children = [convertBranch(branch*2, tree), convertBranch(branch*2+1, tree)]
+    var middleChild = children[0];
     while(middleChild.children) {
       middleChild = middleChild.children[1];
     }
-    b.value = middleChild.value;
+    b = {...middleChild, children};
   }
   return(b);
 }
@@ -79,7 +93,10 @@ function updateRoot(root) {
   // update all existing ones with details from new data bound to them
   node.transition().duration(transitionDuration)
     .attr("transform",
-      function(d) { return "rotate(" + (d.x -90) + ")translate(" + d.y + ")"; });
+      function(d) { return "rotate(" + (d.x -90) + ")translate(" + d.y + ")"; })
+    .select("circle")
+    .style("fill", function(d) { return d.color })
+    .attr("r", function(d) { return d.size });
 
   node
     .on("click", function(d) {if(d==root){updateRoot(root.parent)}else{updateRoot(d)}})
