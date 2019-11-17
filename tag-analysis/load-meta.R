@@ -23,6 +23,7 @@ load_meta_folder = function(folder) {
               author, authorProfileUrl, 
               license, licenseUrl)) %>%
     mutate(tag.type=gsub("\\..*$", "", tag.type), 
+           original.tag=tolower(tag),
            tag=cannonicalize_tag(tag),
            id=gsub(".jpg","",id),  ## remove legacy extensions if present
            title=cannonicalize_title(title)) %>%
