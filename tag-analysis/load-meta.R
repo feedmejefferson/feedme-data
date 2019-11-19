@@ -9,7 +9,7 @@ cannonicalize_title = function(title) {
 }
 
 cannonicalize_tag = function(tag) {
-  return(gsub(" ", "", tolower(tag)))
+  return(gsub("^$", "_no_tags",gsub(" ", "", tolower(tag))))
 }
 
 
@@ -54,6 +54,12 @@ load_tag_vectors = function() {
   ## drop the junk column at the end and rename the first column
   tag_vectors = tag_vectors[,1:301]
   colnames(tag_vectors)[1] <- "tag"
+  tag_vectors <- normalize(tag_vectors)
+  dummy_row <- tag_vectors %>% head(1) %>% mutate_all(function(x) 0)
+  mvp.row <- dummy_row  %>% mutate(tag="_mvp")
+  no.tag.row <- dummy_row  %>% mutate(tag="_no_tags")
+  tag_vectors <- tag_vectors %>% union_all(mvp.row) %>% union_all(no.tag.row)
+  
   return(tag_vectors)
 }
 
