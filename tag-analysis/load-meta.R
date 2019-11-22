@@ -30,6 +30,26 @@ load_meta_folder = function(folder) {
     filter(!is.na(tag)) 
 }
 
+load_moderator_foods = function(folder) {
+  fs::dir_ls(folder, type="file") %>%
+    map(readr::read_file) %>% 
+    map(~ str_replace_all(pattern="\n", replacement="",string=.x)) %>%
+    map_dfr(ndjson::flatten) %>%
+    gather("tag.type", 
+           "tag", 
+           -c(id, title, 
+              originTitle, originUrl, 
+              updated, edited, 
+              author, authorProfileUrl, 
+              license, licenseUrl)) %>%
+    mutate(tag.type=gsub("\\..*$", "", tag.type), 
+#           original.tag=tolower(tag),
+           tag=cannonicalize_tag(tag),
+#           id=gsub(".jpg","",id),  ## remove legacy extensions if present
+           title=cannonicalize_title(title)) %>%
+    filter(!is.na(tag)) 
+}
+
 load_title_vectors = function() {
   ## read in the title names and vectors
   ## using a delimiter of ~ because I don't expect it to be in a title
@@ -54,12 +74,6 @@ load_tag_vectors = function() {
   ## drop the junk column at the end and rename the first column
   tag_vectors = tag_vectors[,1:301]
   colnames(tag_vectors)[1] <- "tag"
-  tag_vectors <- normalize(tag_vectors)
-  dummy_row <- tag_vectors %>% head(1) %>% mutate_all(function(x) 0)
-  mvp.row <- dummy_row  %>% mutate(tag="_mvp")
-  no.tag.row <- dummy_row  %>% mutate(tag="_no_tags")
-  tag_vectors <- tag_vectors %>% union_all(mvp.row) %>% union_all(no.tag.row)
-  
   return(tag_vectors)
 }
 
@@ -75,4 +89,20 @@ normalize = function(x) {
   return(data.frame(label[,1],as.data.frame(mtx)))
 }
 
+# simlar to normalize, but leaves 0 length vectors 0 rather 
+# than turning them into NaN vectors. Similarly it treats NA
+# as 0 so it's forgiving for missing values. 
+normalize0 = function(x) {
+  df = x %>% ungroup()
+  label = df %>% select(-starts_with("X"))
+  vectors = df %>% select(starts_with("X"))
+  mtx = as.matrix(vectors)
+  mags = sqrt(rowSums(mtx^2))
+  mtx = mtx/mags
+  mtx[is.nan(mtx)] = 0
+  mtx[is.na(mtx)] = 0
+  return(data.frame(label,as.data.frame(mtx)))
+}
+
+nn = function(z){names(z)[order(z)[2:6]]}
 
