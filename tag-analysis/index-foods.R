@@ -5,7 +5,7 @@ source("./json-dendogram.R")
 
 ## load metadata for applicable foods
 ## -- focusing on fixed ones for now
-meta = load_moderator_foods("from-moderator/foods")
+meta = load_moderator_foods("from-import/foods")
 
 ## build the index
 tagFoods = meta %>% select(id, tag) %>% 
@@ -19,7 +19,7 @@ tagFoods = meta %>% select(id, tag) %>%
 ## be different because newly tagged foods will show up at
 ## the end of the list, but the sets of foods should be
 ## identical for each tag. 
-write(jsonlite::toJSON(tagFoods), "moderator/tagFoods.json")
+write(jsonlite::toJSON(tagFoods), "to-export/tagFoods.json")
 
 
 ####
@@ -54,11 +54,11 @@ tagvalues <- tagspace %>%
   mutate(value=tag, size=count) %>%
   select(value, size) 
 JSON <- clusterToIndexedTree(tagclusters, tagvalues)
-write(JSON, "d3/word-tree.json")
+write(JSON, "data-explorer/word-tree.json")
 
 # scatter plot
 projected.csv <- data.frame("image"=rownames(ptags),ptags)
-write.csv(file="d3/word-scatter.csv",x=projected.csv,row.names = FALSE)
+write.csv(file="data-explorer/word-scatter.csv",x=projected.csv,row.names = FALSE)
 
 tag.distmtx = as.matrix(dtags)
 #nn = function(z){names(z)[order(z)[2:6]]}
@@ -71,7 +71,7 @@ tag_occurences = meta %>%
 
 tags.json = tibble(id=rownames(ptags), dims=as.matrix(ptags), neighbors=tag.neighbors)
 j = tags.json %>% left_join(tag_occurences, by=c("id"="tag"))
-write(jsonlite::toJSON(j), "moderator/tagStats.json")
+write(jsonlite::toJSON(j), "to-export/tagStats.json")
 
 
 #food_tags = meta %>% select(id, tag.type, tag) %>% distinct_all()
@@ -143,13 +143,13 @@ values <- data.frame(labels) %>%
   mutate(value=labels, edited=1) %>%
   select(value, edited) 
 projected.csv <- data.frame("image"=rownames(mtx),mtx)
-write.csv(file="d3/food-plot.csv",x=projected.csv,row.names = FALSE)
+write.csv(file="data-explorer/food-plot.csv",x=projected.csv,row.names = FALSE)
 #JSON=projectionToIndexedTree(data.frame(mtx[,c(2:12)]))
-#write(JSON, "d3/food-tree.json")
+#write(JSON, "data-explorer/food-tree.json")
 tree = clusterToIndexedTree(clusters, values)
-write(tree,"d3/labeled-food-clusters.json")
+write(tree,"data-explorer/labeled-food-clusters.json")
 tree = clusterToIndexedTree(clusters)
-write(tree,"d3/food-clusters.json")
+write(tree,"data-explorer/food-clusters.json")
 
 
 # write out the basket files
@@ -173,7 +173,7 @@ if(!all.equal(rownames(mtx),rownames(neighbors))) {
 }
 
 foodspace.json = tibble(id=rownames(mtx), dims=mtx, neighbors=neighbors, updated=m$updated, edited=m$edited)
-write(jsonlite::toJSON(foodspace.json), "moderator/foodStats.json")
+write(jsonlite::toJSON(foodspace.json), "to-export/foodStats.json")
 
 
 
