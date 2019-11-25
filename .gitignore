@@ -12,3 +12,4 @@ raw
 archive
 gcp/**/*.json
 aggregated_logs
+docs
