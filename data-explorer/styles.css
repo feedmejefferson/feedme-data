@@ -1,0 +1,46 @@
+/*
+body {
+  font: 10px sans-serif; 
+}
+*/
+
+#word-scatter, #food-plot {
+  font: 10px sans-serif;  
+}
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.dot {
+  stroke: #000;
+}
+text.current {
+  font-weight: bold;
+  font-size: 15px;
+}
+
+.node circle {
+  fill: #fff;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+
+.node {
+  font: 10px sans-serif;
+}
+
+.link {
+  fill: none;
+  stroke: #ccc;
+  stroke-width: 1.5px;
+}
+
+.container { 
+  display: flex;
+}
+.title {
+  font-size: 2rem;
+}

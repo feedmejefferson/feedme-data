@@ -101,7 +101,6 @@ function updateRoot(root) {
   node
     .on("click", function(d) {if(d==root){updateRoot(root.parent)}else{updateRoot(d)}})
     .on("mouseover", function(d) {
-//      console.log(d);
       img.attr("src", "/assets/images/" + d.value + ".jpg");
       $.ajax({
         dataType: "json",
