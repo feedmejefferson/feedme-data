@@ -1,3 +1,8 @@
+const queryParams = getQueryParams();
+const highlight = queryParams["highlight"];
+const initialXdim = queryParams["x"] || "X1";
+const initialYdim = queryParams["y"] || "X2";
+const hoverSupport = mobileHover((d)=>showImage(d.image),() => {})
 
 var transitionTime = 2000;
 
@@ -12,8 +17,8 @@ var y = d3.scale.linear()
     .range([height, 0]);
 
 //var color = d3.scale.category10();
-var color = d3.scale.linear()
-  .range(["blue", "orange"]);
+// var color = d3.scale.linear()
+//   .range(["blue", "orange"]);
 //var size = d3.scale.linear()
   //.range([2,10]);
 
@@ -30,7 +35,7 @@ var img = d3.select("#image-container")
     .attr("height","300px")
     .attr("src","");
 
-var outerSvg = d3.select("div#food-plot")
+var outerSvg = d3.select("div#scatter-plot")
     .append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom);
@@ -43,8 +48,6 @@ d3.csv("food-plot.csv", function(error, data) {
   var availableDimensions = Object.keys(data[0]);
   // get rid of the first element which will always be the image name
   availableDimensions.shift();
-  // similarly get rid of the last element which is the edited flag for coloring points
-  availableDimensions.pop();
 
   var xDims = svg.append("g").attr("class","x-dimensions")
       .selectAll("text")
@@ -71,11 +74,11 @@ d3.csv("food-plot.csv", function(error, data) {
   var yA = svg.append("g")
         .attr("class", "y axis");
 
-    data.forEach(function(d) {
-      d.edited = d.edited == "TRUE" ? 0 : 1;
-    });
+    // data.forEach(function(d) {
+    //   d.edited = d.edited == "TRUE" ? 0 : 1;
+    // });
 
-  color.domain(d3.extent(data, function(d) { return d.edited; })).nice();
+//  color.domain(d3.extent(data, function(d) { return d.edited; })).nice();
 //  size.domain(d3.extent(data, function(d) { return d.P; })).nice();
 
   var points = svg.selectAll(".dot")
@@ -83,25 +86,10 @@ d3.csv("food-plot.csv", function(error, data) {
       .enter().append("circle")
         .attr("class", "dot")
         //.attr("r", function(d) { return size(d.P); })
-        .attr("r", function(d) { return 4; })
-        .on("mouseover", function(d) {      
-            img.attr("src", "/assets/images/" + d.image + ".jpg");
-            $.ajax({
-              dataType: "json",
-              url: "/assets/meta/foods/" + d.image,
-              success: function(data) {
-                var attr = `<a href="${data.originUrl}" target="_blank" rel="noopener noreferrer">${data.originTitle}</a>` + 
-                (data.author ? `by <a href="${data.authorProfileUrl}" target="_blank" rel="noopener noreferrer">${data.author}</a>` : "");
-                $("#title").html(data.title);
-                $("#image-attributions").html(attr);
-                $("#is-tags").html(data.isTags ? data.isTags.join(", ") : "");
-                $("#contains-tags").html(data.containsTags ? data.containsTags.join(", ") : "");
-                $("#other-tags").html(data.descriptiveTags ? data.descriptiveTags.join(", ") : "");
-                $("#edit-link").html(`Editor link: <a href="https://feedme-moderator.firebaseapp.com/food/${d.image}" target="_blank">${d.image}</a>`);
-              }
-            });
-          })   
-        .style("fill", function(d) { return color(d.edited); });
+        .attr("r", function(d) { return d.image === highlight ? 10 : 4; })
+        .on("mouseover", function(d) { hoverSupport.onHover(d) })      
+        .on("click", function(d) { hoverSupport.onClick(d) })      
+        .style("fill", function(d) { return d.image === highlight ? "red" : "blue" });
 
   function plot(xDim, yDim) {
 
@@ -132,7 +120,7 @@ d3.csv("food-plot.csv", function(error, data) {
         .attr("cy", function(d) { return y(d[yDim]); });
 
   }
-  plot("X1", "X2");
+  plot(initialXdim, initialYdim);
 
 
 });

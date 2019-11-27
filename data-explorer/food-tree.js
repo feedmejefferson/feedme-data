@@ -1,10 +1,5 @@
-const searchParm = "id"
-const searchedFood = window.location.search
-  .replace(/\?/,"")
-  .split("&")
-  .map(x => x.split("="))
-  .filter(x => x[0]===searchParm)
-  .map(x => x[1]);
+const queryParams = getQueryParams();
+const highlight = queryParams["highlight"];
 
 var radius = 400;
 var transitionDuration = 0;
@@ -29,32 +24,6 @@ var img = d3.select("#image-container")
     .append("img")
     .attr("height","300px")
     .attr("src","");
-
-
-// convert our custom indexed binary tree format to a standard 
-// node with children structure that d3 understands
-function convertBranch(branch, tree) {
-  var b = { }
-  if(tree[branch]) {
-//    console.log(branch);
-    b.value = tree[branch]; 
-    b.color = "white";
-    b.size = 4;
-    if(searchedFood.includes(b.value)){
-      b.size=10;
-      b.color="red"
-    } 
-    delete(tree[branch]);
-  } else {
-    const children = [convertBranch(branch*2, tree), convertBranch(branch*2+1, tree)]
-    var middleChild = children[0];
-    while(middleChild.children) {
-      middleChild = middleChild.children[1];
-    }
-    b = {...middleChild, children};
-  }
-  return(b);
-}
 
 d3.json("food-tree.json", function(error, tree) {
   if (error) throw error;
@@ -95,29 +64,13 @@ function updateRoot(root) {
     .attr("transform",
       function(d) { return "rotate(" + (d.x -90) + ")translate(" + d.y + ")"; })
     .select("circle")
-    .style("fill", function(d) { return d.color })
-    .attr("r", function(d) { return d.size });
+    .style("fill", function(d) { return d.value===highlight ? "red" : "white" })
+    .attr("r", function(d) { return d.value===highlight ? 10 : 4 });
 
+  const hoverSupport = mobileHover((d)=>showImage(d.value),function(d){if(d==root){updateRoot(root.parent)}else{updateRoot(d)}});
   node
-    .on("click", function(d) {if(d==root){updateRoot(root.parent)}else{updateRoot(d)}})
-    .on("mouseover", function(d) {
-      img.attr("src", "/assets/images/" + d.value + ".jpg");
-      $.ajax({
-        dataType: "json",
-        url: "/assets/meta/foods/" + d.value,
-        success: function(data) {
-          var attr = `<a href="${data.originUrl}" target="_blank" rel="noopener noreferrer">${data.originTitle}</a>` + 
-          (data.author ? `by <a href="${data.authorProfileUrl}" target="_blank" rel="noopener noreferrer">${data.author}</a>` : "");
-          $("#title").html(data.title);
-          $("#image-attributions").html(attr);
-          $("#is-tags").html(data.isTags ? data.isTags.join(", ") : "");
-          $("#contains-tags").html(data.containsTags ? data.containsTags.join(", ") : "");
-          $("#other-tags").html(data.descriptiveTags ? data.descriptiveTags.join(", ") : "");
-          $("#edit-link").html(`Editor link: <a href="https://feedme-moderator.firebaseapp.com/food/${d.value}" target="_blank">${d.value}</a>`);
-        }
-      });
-
-    });
+    .on("mouseover", function(d) { hoverSupport.onHover(d) })      
+    .on("click", function(d) { hoverSupport.onClick(d) });
 
 }
 

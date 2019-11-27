@@ -1,3 +1,6 @@
+const queryParams = getQueryParams();
+const highlight = queryParams["highlight"];
+
 var radius = 400;
 var transitionDuration = 0;
 
@@ -12,25 +15,6 @@ var svg = d3.select("#svg-container").append("svg")
     .attr("height", radius * 2)
     .append("g")
     .attr("transform", "translate(" + radius + "," + radius + ")");
-
-// convert our custom indexed binary tree format to a standard 
-// node with children structure that d3 understands
-function convertBranch(branch, tree) {
-    var b = { }
-    if(tree[branch]) {
-      b = tree[branch]; 
-      delete(tree[branch]);
-    } else {
-      b.children = [convertBranch(branch*2, tree), convertBranch(branch*2+1, tree)]
-      var middleChild = b.children[0];
-      while(middleChild.children) {
-        middleChild = middleChild.children[1];
-      }
-//      b.value = middleChild.value;
-      b.size = b.children[0].size + b.children[1].size
-    }
-    return(b);
-}
   
 d3.json("word-tree.json", function(error, tree) {
     if (error) throw error;
@@ -74,7 +58,8 @@ function updateRoot(root) {
       .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
       .attr("transform", function(d) { return d.x < 180 ? "translate(8)" : "rotate(180)translate(-8)"; })
       .attr("font-size", function(d) { return d.size ? Math.pow(d.size,.3) + "em" : "1rem"})
-      .text(function(d) { return d.value });
+      .style("fill", function(d) { return d.value === highlight ? "red" : "black"})
+      .text(function(d) { return d.children ? "" : d.value });
 
   node.select("circle")
       .attr("r", function(d) { return d.size ? Math.pow(d.size,.3) : 2 });

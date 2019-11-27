@@ -1,3 +1,13 @@
+const queryParams = getQueryParams();
+const highlight = queryParams["highlight"];
+const showWords = queryParams["show"]==="words";
+const initialXdim = queryParams["x"] || "X1";
+const initialYdim = queryParams["y"] || "X2";
+
+// need different x/y attributes for text than for circles
+const xAttr = showWords ? "x" : "cx";
+const yAttr = showWords ? "y" : "cy";
+const hoverSupport = mobileHover((d)=>showTag(d.image),() => {})
 
 var transitionTime = 2000;
 
@@ -25,12 +35,7 @@ var yAxis = d3.svg.axis()
     .scale(y)
     .orient("left");
 
-var img = d3.select("#image-container")
-    .append("img")
-    .attr("height","300px")
-    .attr("src","");
-
-var outerSvg = d3.select("div#word-scatter")
+var outerSvg = d3.select("div#scatter-plot")
     .append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom);
@@ -69,28 +74,31 @@ d3.csv("word-scatter.csv", function(error, data) {
   var yA = svg.append("g")
         .attr("class", "y axis");
 
-    data.forEach(function(d) {
-      d.S = +d.S;
-      d.C = +d.C;
-      d.U = +d.U;
-      d.P = (d.C)/(d.S);
-    });
+    // data.forEach(function(d) {
+    //   d.S = +d.S;
+    // });
 
   color.domain(d3.extent(data, function(d) { return d.S; })).nice();
   size.domain(d3.extent(data, function(d) { return d.P; })).nice();
 
   var points = svg.selectAll(".dot")
-        .data(data)
-      .enter().append("circle")
-        .attr("class", "dot")
-        //.attr("r", function(d) { return size(d.P); })
-        .attr("r", function(d) { return 2; })
-        .on("mouseover", function(d) {      
-          $("#title").html(d.image);
-          //            img.attr("src", "/images/images/" + d.image);
- //             img.attr("src", "http://feedmejefferson.github.io/images/thumbs/" + d.image);
-          })   
-        .style("fill", function(d) { return color(d.S); });
+        .data(data);
+  if(showWords) {
+    points.enter().append("text")
+      .text(function(d) { return d.image })
+      .attr("font-size", function(d) { return d.image === highlight ? "2rem" : "1rem"; })
+      .on("mouseover", function(d) { hoverSupport.onHover(d) })      
+      .on("click", function(d) { hoverSupport.onClick(d) })      
+      .style("fill", function(d) { return d.image === highlight ? "red" : "black" });
+  
+  } else { 
+    points.enter().append("circle")
+    .attr("class", "dot")
+    .attr("r", function(d) { return d.image === highlight ? 10 : 4; })
+    .on("mouseover", function(d) { hoverSupport.onHover(d) })      
+    .on("click", function(d) { hoverSupport.onClick(d) })      
+    .style("fill", function(d) { return d.image === highlight ? "red" : "blue" });
+  }
 
   function plot(xDim, yDim) {
 
@@ -117,11 +125,11 @@ d3.csv("word-scatter.csv", function(error, data) {
     yA.transition().duration(transitionTime).call(yAxis);
 
     points.transition().duration(transitionTime)
-        .attr("cx", function(d) { return x(d[xDim]); })
-        .attr("cy", function(d) { return y(d[yDim]); });
+        .attr(xAttr, function(d) { return x(d[xDim]); })
+        .attr(yAttr, function(d) { return y(d[yDim]); });
 
   }
-  plot("X1", "X2");
+  plot(initialXdim, initialYdim);
 
 
 });

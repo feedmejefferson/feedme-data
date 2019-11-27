@@ -4,7 +4,7 @@ body {
 }
 */
 
-#word-scatter, #food-plot {
+#scatter-plot {
   font: 10px sans-serif;  
 }
 .axis path,
