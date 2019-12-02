@@ -1,5 +1,5 @@
 const queryParams = getQueryParams();
-const highlight = queryParams["highlight"];
+const highlight = queryParams["highlight"] && queryParams["highlight"].split(",");
 const showWords = queryParams["show"]==="words";
 const initialXdim = queryParams["x"] || "X1";
 const initialYdim = queryParams["y"] || "X2";
@@ -15,17 +15,8 @@ var margin = {top: 20, right: 20, bottom: 60, left: 80},
     width = 600 - margin.left - margin.right,
     height = 600 - margin.top - margin.bottom;
 
-var x = d3.scale.linear()
-    .range([0, width]);
-
-var y = d3.scale.linear()
-    .range([height, 0]);
-
-//var color = d3.scale.category10();
-var color = d3.scale.linear()
-  .range(["white", "blue"]);
-var size = d3.scale.linear()
-  .range([2,10]);
+var x = d3.scale.linear().range([0, width]);
+var y = d3.scale.linear().range([height, 0]);
 
 var xAxis = d3.svg.axis()
     .scale(x)
@@ -42,7 +33,7 @@ var outerSvg = d3.select("div#scatter-plot")
 var svg = outerSvg.append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-d3.csv("word-scatter.csv", function(error, data) {
+d3.csv(queryParams["data"] || "word-scatter.csv", function(error, data) {
   if (error) throw error;
 
   var availableDimensions = Object.keys(data[0]);
@@ -74,25 +65,22 @@ d3.csv("word-scatter.csv", function(error, data) {
   var yA = svg.append("g")
         .attr("class", "y axis");
 
-    // data.forEach(function(d) {
-    //   d.S = +d.S;
-    // });
-
-  color.domain(d3.extent(data, function(d) { return d.S; })).nice();
-  size.domain(d3.extent(data, function(d) { return d.P; })).nice();
+  const applyFilters = buildFilterFunction(data, availableDimensions);
 
   var points = svg.selectAll(".dot")
         .data(data);
   if(showWords) {
     points.enter().append("text")
+      .filter(function(d) { return applyFilters(d) })
       .text(function(d) { return d.image })
-      .attr("font-size", function(d) { return d.image === highlight ? "2rem" : "1rem"; })
+      .attr("font-size", function(d) { return (highlight && highlight.includes(d.image)) ? "2rem" : "1rem"; })
       .on("mouseover", function(d) { hoverSupport.onHover(d) })      
       .on("click", function(d) { hoverSupport.onClick(d) })      
-      .style("fill", function(d) { return d.image === highlight ? "red" : "black" });
+      .style("fill", function(d) { return (highlight && highlight.includes(d.image)) ? "red" : "black" });
   
   } else { 
     points.enter().append("circle")
+    .filter(function(d) { return applyFilters(d) })
     .attr("class", "dot")
     .attr("r", function(d) { return d.image === highlight ? 10 : 4; })
     .on("mouseover", function(d) { hoverSupport.onHover(d) })      

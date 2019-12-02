@@ -86,3 +86,24 @@ const mobileHover = (hoverFunction, clickFunction) => {
     }
   }
 }
+
+const buildFilterFunction = (data, dimensions) => {  
+  var filters = [];
+  const queryParams = getQueryParams();
+  dimensions.forEach(dim => {
+    if(queryParams[dim]) {
+      const qp = queryParams[dim].split(",").map(x=>+x);
+      filters.push({
+        scale: d3.scale.linear()
+        .range([0,100])
+        .domain(d3.extent(data, function(d) { return +d[dim]; })),
+        min: qp[0],
+        max: qp[1],
+        dim
+      });
+    }
+  });
+  const limit = queryParams["sample"] && queryParams["sample"] / 100;
+  const sample = limit ? () => { return (Math.random() < limit) } : () => true;
+  return (d) => sample() && filters.every(f => !(f.min < f.scale(d[f.dim]) && f.max > f.scale(d[f.dim])));
+}

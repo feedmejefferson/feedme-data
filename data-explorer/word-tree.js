@@ -1,5 +1,5 @@
 const queryParams = getQueryParams();
-const highlight = queryParams["highlight"];
+const highlight = queryParams["highlight"] && queryParams["highlight"].split(",");
 
 var radius = 400;
 var transitionDuration = 0;
@@ -16,7 +16,7 @@ var svg = d3.select("#svg-container").append("svg")
     .append("g")
     .attr("transform", "translate(" + radius + "," + radius + ")");
   
-d3.json("word-tree.json", function(error, tree) {
+d3.json(queryParams["data"] || "word-tree.json", function(error, tree) {
     if (error) throw error;
     // I wish I didn't have to fully mutate the tree object, but it seems to be bound
     // to d3 already and replacing it with another object doesn't work
@@ -58,7 +58,7 @@ function updateRoot(root) {
       .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
       .attr("transform", function(d) { return d.x < 180 ? "translate(8)" : "rotate(180)translate(-8)"; })
       .attr("font-size", function(d) { return d.size ? Math.pow(d.size,.3) + "em" : "1rem"})
-      .style("fill", function(d) { return d.value === highlight ? "red" : "black"})
+      .style("fill", function(d) { return (highlight && highlight.includes(d.value)) ? "red" : "black"})
       .text(function(d) { return d.children ? "" : d.value });
 
   node.select("circle")

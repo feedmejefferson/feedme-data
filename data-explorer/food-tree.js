@@ -1,5 +1,5 @@
 const queryParams = getQueryParams();
-const highlight = queryParams["highlight"];
+const highlight = queryParams["highlight"] && queryParams["highlight"].split(",");
 
 var radius = 400;
 var transitionDuration = 0;
@@ -25,7 +25,7 @@ var img = d3.select("#image-container")
     .attr("height","300px")
     .attr("src","");
 
-d3.json("food-tree.json", function(error, tree) {
+d3.json(queryParams["data"] || "food-tree.json", function(error, tree) {
   if (error) throw error;
   // I wish I didn't have to fully mutate the tree object, but it seems to be bound
   // to d3 already and replacing it with another object doesn't work
@@ -64,8 +64,8 @@ function updateRoot(root) {
     .attr("transform",
       function(d) { return "rotate(" + (d.x -90) + ")translate(" + d.y + ")"; })
     .select("circle")
-    .style("fill", function(d) { return d.value===highlight ? "red" : "white" })
-    .attr("r", function(d) { return d.value===highlight ? 10 : 4 });
+    .style("fill", function(d) { return (highlight && highlight.includes(d.value)) ? "red" : "white" })
+    .attr("r", function(d) { return (highlight && highlight.includes(d.value)) ? 10 : 4 });
 
   const hoverSupport = mobileHover((d)=>showImage(d.value),function(d){if(d==root){updateRoot(root.parent)}else{updateRoot(d)}});
   node
