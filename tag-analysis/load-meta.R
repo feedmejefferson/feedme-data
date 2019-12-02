@@ -69,8 +69,8 @@ load_title_vectors = function() {
   
 }
 
-load_tag_vectors = function() {
-  tag_vectors = read_delim("./fasttext/tag-vectors.txt", " ", col_names = FALSE)
+load_tag_vectors = function(source="./fasttext/tag-vectors.txt") {
+  tag_vectors = read_delim(source, " ", col_names = FALSE)
   ## drop the junk column at the end and rename the first column
   tag_vectors = tag_vectors[,1:301]
   colnames(tag_vectors)[1] <- "tag"
