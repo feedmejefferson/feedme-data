@@ -5,7 +5,7 @@ source("load-meta.R")
 ## load all of the metadata -- for now we're only loading fixed
 #fixed = load_meta_folder("fixed/photos")
 #fixed = load_meta_folder("images/photos")
-meta = load_moderator_foods("from-export/foods")
+meta = load_moderator_foods("from-import/foods")
 
 tags = meta %>% select(tag) %>% 
   # ignore tags that start with underscore 
