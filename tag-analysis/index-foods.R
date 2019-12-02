@@ -37,7 +37,7 @@ tagspace <- tags %>% left_join(dictionary)
 tagspace <- normalize0(tagspace)
 tagmtx = as.matrix(tagspace %>% select(contains("X")))
 rownames(tagmtx) <- tagspace$tag
-p = as.matrix(read.table("projection-matrix.txt"))
+p = as.matrix(read.table("projection-matrix-alt.txt"))
 ptags = tagmtx %*% p
 colnames(ptags)=paste("X",1:12, sep="") ## TODO: fix the javascript to be more forgiving
 #ptags = normalize0(data.frame(ptags))
@@ -46,8 +46,6 @@ pdict = data.frame("tag"=rownames(ptags),ptags)
 
 dtags <- dist(ptags)
 tagclusters <- hclust(dtags)
-#colnames(ptags)=paste("X",1:12, sep="") ## TODO: fix the javascript to be more forgiving
-#rownames(ptags) = rownames(mtx)
 
 # word tree
 tagvalues <- tagspace %>% 
@@ -61,7 +59,7 @@ projected.csv <- data.frame("image"=rownames(ptags),ptags)
 write.csv(file="data-explorer/word-scatter.csv",x=projected.csv,row.names = FALSE)
 
 tag.distmtx = as.matrix(dtags)
-#nn = function(z){names(z)[order(z)[2:6]]}
+#nn = function(z){names(z)[order(z)[2:6]]} ## moved to load-meta
 tag.neighbors = t(apply(tag.distmtx,2,nn))
 
 tag_occurences = meta %>% 
@@ -73,8 +71,6 @@ tags.json = tibble(id=rownames(ptags), dims=as.matrix(ptags), neighbors=tag.neig
 j = tags.json %>% left_join(tag_occurences, by=c("id"="tag"))
 write(jsonlite::toJSON(j), "to-export/tagStats.json")
 
-
-#food_tags = meta %>% select(id, tag.type, tag) %>% distinct_all()
 food_tags = meta %>% select(id, tag, edited, updated) %>% distinct_all()
 
 ## join these to our image ids and make sure none are missing
@@ -88,82 +84,45 @@ grouped = joined %>%
   summarize_all(mean)
 
 m = grouped %>% 
-  #  filter(tag.type=="containsTags") %>% 
-  #  filter(tag.type=="isTags") %>% 
-  #  filter(tag.type=="descriptiveTags") %>% 
-  #  select(-tag.type) %>%
   ungroup()
 
-## normalize after averaging?
-#m = normalize(m)
+## normalize after averaging? Ditch the first "foodiness" dimension? 
+#mn = m %>% select(-c("X1"))  
+#mn = normalize(mn)
 
 # create a matrix using only the numeric vector columns
 mtx = as.matrix(m %>% select(contains("X")))
+# mtx = as.matrix(mn %>% select(contains("X"))) # using normalized matrix
+
 # label the matrix rows with the food id
+# TODO: create a better function for jumping between tidy and matrix forms
 rownames(mtx)=m$id
 
-
-
-## run some agglomerative hierarchical clustering
-#dists = dist(mtx, method="euclidean")
-#clusters = hclust(dists, "ward.D2")
-## write out the food clusters file for the d3.js food explorer
-#JSON <- toLabeledJsonNodeTree(clusters)
-#write(JSON, "d3/food-tree.json")
-
-
-## use random projection approach
-#library(RandPro)
-#set.seed(3456)
-#p=form_matrix(300,20,FALSE)
-## use projection matrix created from svd on adams apple foods
-#p = as.matrix(read.table("projection-matrix.txt"))
-#projected = mtx %*% p
-#colnames(projected)=paste("X",1:12, sep="") ## TODO: fix the javascript to be more forgiving
-#rownames(projected) = rownames(mtx)
-
-
 ## Build all the snazzy visuals (or at least the inputs for them)
+# decision tree
+#tree=projectionToIndexedTree(data.frame(mtx) # for normalized minus foodiness dimension
+tree=projectionToIndexedTree(data.frame(mtx[,c(2:12)]))
+write(tree, "data-explorer/food-tree.json")
 
 # scatter plot
-#projected.csv <- data.frame("image"=rownames(projected),projected)
-#projected.csv <- projected.csv %>% left_join(edited, by = c("image"="id"))
-#write.csv(file="d3/food-plot.csv",x=projected.csv,row.names = FALSE)
-
-# decision tree
-#JSON=projectionToIndexedTree(data.frame(projected[,c(2:12)]))
-#write(JSON, "d3/food-tree.json")
-
-# food clusters
-dists = dist(mtx, method="euclidean")
-clusters = hclust(dists, "ward.D2")
-labels = clusters$labels
-values <- data.frame(labels) %>%
-#  left_join(edited, by=c("labels"="id")) %>%
-  mutate(value=labels, edited=1) %>%
-  select(value, edited) 
 projected.csv <- data.frame("image"=rownames(mtx),mtx)
 write.csv(file="data-explorer/food-plot.csv",x=projected.csv,row.names = FALSE)
-#JSON=projectionToIndexedTree(data.frame(mtx[,c(2:12)]))
-#write(JSON, "data-explorer/food-tree.json")
-tree = clusterToIndexedTree(clusters, values)
-write(tree,"data-explorer/labeled-food-clusters.json")
+
+# food clusters based on hierarchical agglomerative clustering
+dists = dist(mtx, method="euclidean")
+clusters = hclust(dists, "ward.D2")
+#labels = clusters$labels
+#values <- data.frame(labels) %>%
+#  mutate(value=labels, edited=1) %>%  
+#  select(value, edited) 
+# labeled withfor visualization
+#tree = clusterToIndexedTree(clusters, values)
+#write(tree,"data-explorer/labeled-food-clusters.json")
 tree = clusterToIndexedTree(clusters)
 write(tree,"data-explorer/food-clusters.json")
 
 
-# write out the basket files
-#v = t(projected)
-#vectors = split(v, rep(1:ncol(v), each = nrow(v)))
-#names(vectors) = gsub(".jpg","",rownames(projected))
-#write(jsonlite::toJSON(vectors), "d3/vectors.all.json")
-
-#attributions = meta %>% 
-#  select(author, authorProfileUrl, id, license, licenseUrl, originTitle, originUrl, title) %>%
-#  distinct_all()
-
-#write(jsonlite::toJSON(attributions), "d3/attributions.all.json")
-
+## get the nearest neigbors for food stats
 distmtx = as.matrix(dists)
 # nn = function(z){labels[order(z)[2:6]]}
 neighbors = t(apply(distmtx,2,nn))
@@ -176,6 +135,16 @@ foodspace.json = tibble(id=rownames(mtx), dims=mtx, neighbors=neighbors, updated
 write(jsonlite::toJSON(foodspace.json), "to-export/foodStats.json")
 
 
+## More output for mvp filtered visuals
+mvp = meta %>% select(id,tag) %>% filter(tag=="_mvp")
+m.mvp = mtx[mvp$id,]
 
-
+dists = dist(m.mvp, method="euclidean")
+clusters = hclust(dists, "ward.D2")
+tree = clusterToIndexedTree(clusters)
+write(tree,"data-explorer/food-clusters-mvp.json")
+tree=projectionToIndexedTree(data.frame(m.mvp[,c(2:12)]))
+write(tree, "data-explorer/food-tree-mvp.json")
+projected.csv <- data.frame("image"=rownames(m.mvp),m.mvp)
+write.csv(file="data-explorer/food-plot-mvp.csv",x=projected.csv,row.names = FALSE)
 
