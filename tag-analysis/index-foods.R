@@ -143,6 +143,12 @@ dists = dist(m.mvp, method="euclidean")
 clusters = hclust(dists, "ward.D2")
 tree = clusterToIndexedTree(clusters)
 write(tree,"data-explorer/food-clusters-mvp.json")
+## try alternate approach ignoring first dimension
+dists = dist(m.mvp[,c(2:12)], method="euclidean")
+clusters = hclust(dists, "ward.D2")
+tree = clusterToIndexedTree(clusters)
+write(tree,"data-explorer/food-clusters-mvp-alt.json")
+
 tree=projectionToIndexedTree(data.frame(m.mvp[,c(2:12)]))
 write(tree, "data-explorer/food-tree-mvp.json")
 projected.csv <- data.frame("image"=rownames(m.mvp),m.mvp)
