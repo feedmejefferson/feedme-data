@@ -1,137 +1,83 @@
-## For now assume we're starting with the ending environment 
-## from build-food-vectors.R
-#source("./build-food-vectors.R")
+library(tidyverse)
+library(jsonlite)
+source("./load-meta.R")
+source("./json-dendogram.R")
 
-# convert the tree to a simplified list using json as an
-# intermediary... For now this is what we'll assume as the
-# starting point format for some of these functions
-t = jsonlite::fromJSON(tree)
+basket_name = "_mvp"
 
-# write out the basket files
-#v = t(projected)
+## load metadata for all foods
+meta = load_moderator_foods("from-import/foods")
+
+dictionary = load_tag_vectors()
+
+tags = meta %>% 
+  select(tag) %>% 
+  group_by(tag) %>% 
+  summarize(count=n())
+
+tagspace <- tags %>% left_join(dictionary)
+tagspace <- normalize0(tagspace)
+tagmtx = as.matrix(tagspace %>% select(contains("X")))
+rownames(tagmtx) <- tagspace$tag
+p = as.matrix(read.table("projection-matrix-alt.txt"))
+ptags = tagmtx %*% p
+colnames(ptags)=paste("X",1:12, sep="") ## TODO: fix the javascript to be more forgiving
+#ptags = normalize0(data.frame(ptags))
+pdict = data.frame("tag"=rownames(ptags),ptags)
+
+
+
+food_tags = meta %>% select(id, tag, edited, updated) %>% distinct_all()
+
+## join these to our image ids and make sure none are missing
+joined = food_tags %>%
+  left_join(pdict) %>% ungroup()
+
+grouped = joined %>%
+  select(-tag) %>%
+  #  group_by(id, tag.type) %>%
+  group_by(id, edited, updated) %>%
+  summarize_all(mean)
+
+m = grouped %>% 
+  ungroup()
+
+## normalize after averaging? Ditch the first "foodiness" dimension? 
+#mn = m %>% select(-c("X1"))  
+#mn = normalize(mn)
+
+# create a matrix using only the numeric vector columns
+mtx = as.matrix(m %>% select(contains("X")))
+# mtx = as.matrix(mn %>% select(contains("X"))) # using normalized matrix
+
+# label the matrix rows with the food id
+# TODO: create a better function for jumping between tidy and matrix forms
+rownames(mtx)=m$id
+
+## retrict the matrix to only the foods in our target basket
+basket = meta %>% select(id,tag) %>% filter(tag==basket_name)
+mtx = mtx[basket$id,]
+
+## create the basket directory in case it doesn't yet exist
+dir.create(file.path(".","baskets"))
+dir.create(file.path("baskets",basket_name))
+
+## Build all the snazzy visuals (or at least the inputs for them)
+# decision tree
+#tree=projectionToIndexedTree(data.frame(mtx) # for normalized minus foodiness dimension
+tree=projectionToIndexedTree(data.frame(mtx[,c(2:12)]))
+write(tree, paste("baskets",basket_name,"food-tree.json",sep="/"))
+
+attributions = meta %>% 
+  select(author, authorProfileUrl, id, license, licenseUrl, originTitle, originUrl, title) %>%
+  distinct_all() %>%
+  semi_join(basket)
+write(jsonlite::toJSON(attributions), paste("baskets",basket_name,"attributions.json",sep="/"))
+
+## finally, write out the vector files -- not using yet
+#v = t(mtx)
 #vectors = split(v, rep(1:ncol(v), each = nrow(v)))
-#names(vectors) = gsub(".jpg","",rownames(projected))
-#write(jsonlite::toJSON(vectors), "vectors.all.json")
+#names(vectors) = rownames(mtx)
+#write(jsonlite::toJSON(vectors), paste("baskets",basket_name,"vectors.json",sep="/"))
 
-#attributions = meta %>% 
-#  select(author, authorProfileUrl, id, license, licenseUrl, originTitle, originUrl) %>%
-#  distinct_all() %>% head(3)
-
-
-
-split_tree = function(tree, target_size=32) {
-  branches = tree
-  keys = as.integer(names(branches))
-  max.depth = ceiling(log2(max(keys)))
-  leaves = list()
-  unsolved.brances = 1
-  found.leaves = 0
-  remaining.keys = keys
-  # breadth first search through tree depths
-  for(depth in 0:max.depth) {
-    cat("\n");cat(depth);cat(": ")
-    start = 2^depth
-    end = (2^(depth+1))-1
-    leaf.keys = which(keys<=end & keys>=start)
-    remaining.keys = remaining.keys[!remaining.keys %in% leaf.keys]
-    found.leaves = found.leaves + length(leaf.keys)
-    leaves = append(leaves, branches[leaf.keys])
-    #  cat(length(leaves)); cat("   ");cat(keys[leaf.keys])
-    cat(" found: ");cat(length(leaves))
-    unsolved.brances = (unsolved.brances - length(leaf.keys)) * 2
-    cat(" unsolved: "); cat(unsolved.brances)
-    cat(" min size: "); cat(unsolved.brances + length(leaves))
-    #  for(node in start:end) {
-    #    cat(node); cat(" "); # print every branch number
-    #  }
-    #  cat("\n")
-  }
-  
-}
-
-split_tree(t)
-
-
-branch_size = function(tree, branch) {
-  if(exists(as.character(branch), where=tree)){
-    return(1)
-  } else {
-    size = branch_size(tree,branch*2)+branch_size(tree,branch*2+1)
-    if(size>=8 && size<=16) {
-      cat("\nbranch: ");cat(branch);
-      cat("    size: ");cat(size);
-    }
-    return(size)
-  }
-}
-
-walk_tree = function(tree, branch) {
-  depth=floor(log2(branch))
-  if(exists(as.character(branch), where=tree)){
-    # it's a terminal food node
-    nodes = list()
-    nodes[as.character(branch)]=tree[as.character(branch)]
-    l = list(nodes=nodes,size=1,maxDepth=1,representative=tree[as.character(branch)][[1]])
-    return(l)
-  } else {
-    b1 = walk_tree(tree,branch*2)
-    b2 = walk_tree(tree,branch*2+1)
-    size = b1$size + b2$size
-    representative = b1$representative ## TODO: representative strategy
-    maxDepth = max(b1$maxDepth,b2$maxDepth) + 1
-    nodes = append(b1$nodes,b2$nodes)
-    if(size>=8 && size<=16) {
-      cat("\nbranch: ");cat(branch);
-      cat("    size: ");cat(size);
-      cat("    depth: ");cat(depth);
-      cat("    maxDepth: ");cat(maxDepth);
-      cat("    rep: ");cat(representative);
-    }
-    l = list(
-      nodes=nodes,
-      size=size,
-      maxDepth=maxDepth,
-      representative=representative)
-    return(l)
-  }
-}
-l = walk_tree(t,1)
-
-
-
-walk_tree = function(tree, branch) {
-  basketDepth=3
-  frequency=1
-  basket=list()
-  depth=floor(log2(branch))
-  if(exists(as.character(branch), where=tree)){
-    # it's a terminal food node
-    nodes = list()
-    nodes[as.character(branch)]=tree[as.character(branch)]
-    basket[1]=nodes
-    l = list(basket=basket,size=1,maxDepth=1,representative=tree[as.character(branch)][[1]])
-    return(l)
-  } else {
-    b1 = walk_tree(tree,branch*2)
-    b2 = walk_tree(tree,branch*2+1)
-    size = b1$size + b2$size
-    representative = b1$representative ## TODO: representative strategy
-    maxDepth = max(b1$maxDepth,b2$maxDepth) + 1
-    basket = append(b1$basket[1],b2$basket[1])
-    if(size>=8 && size<=16) {
-      cat("\nbranch: ");cat(branch);
-      cat("    size: ");cat(size);
-      cat("    depth: ");cat(depth);
-      cat("    maxDepth: ");cat(maxDepth);
-      cat("    rep: ");cat(representative);
-    }
-    l = list(
-      basket=basket,
-      size=size,
-      maxDepth=maxDepth,
-      representative=representative)
-    return(l)
-  }
-}
-l = walk_tree(t,11)
 
